@@ -1,0 +1,60 @@
+syntax = "proto3";
+package pb;
+
+service Queue {
+    rpc Join(JoinQueueRequest) returns (stream JoinQueueResponse);
+    rpc Leave(LeaveQueueRequest) returns (LeaveQueueResponse);
+    rpc Accept(AcceptQueueRequest) returns (stream AcceptQueueResponse);
+    rpc Decline(DeclineQueueRequest) returns (DeclineQueueResponse);
+    rpc Info(QueueInfoRequest) returns (QueueInfoResponse);
+}
+
+message JoinQueueRequest {
+    uint64 user_id = 1;
+    uint64 queue_id = 2;
+}
+
+message JoinQueueResponse {
+    uint64 user_id = 1;
+    uint64 queue_id = 2;
+    uint64 match_id = 3;
+    bool found = 4;
+    uint32 seconds_to_accept = 5;
+}
+
+message LeaveQueueRequest {
+    uint64 user_id = 1; 
+    uint64 queue_id = 2;
+}
+
+message LeaveQueueResponse {
+    uint64 user_id = 1;
+    uint64 queue_id = 2;
+}
+
+message AcceptQueueRequest {
+    uint64 user_id = 1;
+    uint64 match_id = 2;
+}
+
+message AcceptQueueResponse {
+    uint32 total_accepted = 1;
+    uint32 total_needed = 2;
+    bool cancelled = 3;
+}
+
+message DeclineQueueRequest {
+    uint64 user_id = 1;
+    uint64 match_id = 2;
+}
+
+message DeclineQueueResponse {}
+
+message QueueInfoRequest {
+    uint64 user_id = 1;
+    uint64 queue_id = 2;
+}
+
+message QueueInfoResponse {
+    uint32 seconds_estimated = 1;
+}
