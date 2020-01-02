@@ -1,7 +1,5 @@
 package main
 
-//keep queue state if a player declines
-
 type MatchAcceptStatus int
 
 const (

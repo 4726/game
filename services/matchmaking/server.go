@@ -18,32 +18,63 @@ func (s *Server) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServer) er
 	}
 	
 	foundCh := make(chan uint64, 1)
-	qd := QueueData{in.GetUserID(), in.GetRating(), foundCh, time.Now()}
-	users, err := queue.FindAndDeleteWithinRatingRangeOrEnqueue(qd, 100, 10)
+	startTime := time.Now()
+	qd := QueueData{in.GetUserID(), in.GetRating(), foundCh, startTime. false}
+	users, err := queue.FindAndMarkMatchFoundWithinRatingRangeOrEnqueue(qd, 100, 10)
 	if err != nil {
-		//already in quee
+		//already in queue
 		return
 	}
 
-	var matchID uint64
-	if len(users) > 0 {
-		matchID, _ = getMatchID()
-		for _, v := range users {
-			v.FoundCh <- matchID
+	matchFoundFn := func(status QueueStatus) (bool, error) {
+		status = <- foundCh
+		if status.MatchStarted {
+			return true, nil
 		}
-	} else {
-		matchID = <- foundCh
-		matches[matchID] == NewMatch(users, in.GetQueueType())
-	}
-	resp := &JoinQueueResponse {
-		in.GetUserId(),
-		in.GetQueueType(),
-		matchID,
-		true, 
-		uint32(20),
-	}
+		s.queueTimes.Add(QueueDuration{in.GetRating(), time.Since(startTime)})
 
-	return outStream.Send(resp)
+		resp := &JoinQueueResponse {
+			in.GetUserId(),
+			in.GetQueueType(),
+			matchID,
+			true, 
+			uint32(20),
+		}
+	
+		err := outStream.Send(resp)
+		return false, err
+	}()
+
+	var status QueueStatus
+	if len(users) > 0 {
+		status, _ = getMatchID()
+		matches[matchID] == NewMatch(users, in.GetQueueType())
+		for _, v := range users {
+			v.FoundCh <- QueueStatus{matchID, false}
+		}
+		s.queueTimes.Add(QueueDuration{in.GetRating(), time.Since(startTime)})
+
+		resp := &JoinQueueResponse {
+			in.GetUserId(),
+			in.GetQueueType(),
+			matchID,
+			true, 
+			uint32(20),
+		}
+	
+		if err := outStream.Send(resp); err != nil {
+			return err
+		}
+	}
+	for {
+		matchStarted, err := matchFoundFn(status)
+		if err != nil {
+			return err
+		}
+		if matchStated {
+			return nil
+		}
+	}
 }
 
 func (s *Server) Leave(ctx context.Context, in *pb.LeaveQueueRequest) (*pb.LeaveQueueResponse, error) {
@@ -60,9 +91,16 @@ func (s *Server) Leave(ctx context.Context, in *pb.LeaveQueueRequest) (*pb.Leave
 }
 
 func (s *Server) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_AcceptServer) error {
+	var queue Queue
+	if in.GetQueueType() == QueueType_UNRANKED {
+		queue = s.unrankedQueue
+	} else {
+		queue = s.rankedQueue
+	}
+
 	match := s.matches[in.GetMatchId()]
-	ch := make(chan MatchResponse, 1)
-	if err := match.Accept(in.GetUserId()); err != nil {
+	ch := make(chan *pb.AcceptQueueResponse, 1)
+	if err := match.Accept(in.GetUserId(), ch); err != nil {
 		return err
 	}
 
@@ -72,6 +110,14 @@ func (s *Server) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_AcceptServ
 			return err
 		}
 		if resp.GetCancelled() {
+			queue.MarkMatchFound(in.GetUserId(), false) //readd user to queue
+			return nil
+		}
+		if resp.GetTotalAccepted() == resp.GetTotalNeeded() {
+			//everyone accepted, remove user from queue
+			//also removes match
+			queue.SetMatchStartedAndDelete(in.GetUserId(), in.GetMatchId(), true)
+			delete(s.matches, in.GetMatchId())
 			return nil
 		}
 	}
