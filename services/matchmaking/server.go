@@ -99,18 +99,25 @@ func (s *Server) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_AcceptServ
 	}
 
 	match := s.matches[in.GetMatchId()]
-	ch := make(chan *pb.AcceptQueueResponse, 1)
+	ch := make(chan MatchStatus, 1)
 	if err := match.Accept(in.GetUserId(), ch); err != nil {
 		return err
 	}
 
 	for {
-		resp <- ch
+		status <- ch
+		resp := &AcceptQueueResponse{
+			TotalAccepted: status.TotalAccepted,
+			TotalNeeded: stauts.TotalNeeded,
+			QueueType: in.GetQueueType(),
+			Cancelled: status.Cancelled,
+		}
 		if err := outStream.Send(resp); err != nil {
 			return err
 		}
 		if resp.GetCancelled() {
-			queue.MarkMatchFound(in.GetUserId(), false) //readd user to queue
+			//someone declined, adds user back into queue
+			queue.MarkMatchFound(in.GetUserId(), false)
 			return nil
 		}
 		if resp.GetTotalAccepted() == resp.GetTotalNeeded() {

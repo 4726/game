@@ -1,5 +1,10 @@
 package main
 
+import (
+	"errors"
+	"sync"
+)
+
 type MatchAcceptStatus int
 
 const (
@@ -11,24 +16,28 @@ const (
 type Match struct {
 	sync.Mutex
 	players map[QueueData]MatchAcceptStatus
-	queueType pb.QueueType
-	chs chan *pb.AcceptQueueResponse
+	chs     []chan MatchStatus
+}
+
+type MatchStatus struct {
+	TotalAccepted, TotalNeeded int
+	Cancelled                  bool
 }
 
 var ErrUserNotInMatch = errors.New("user is not in this match")
 
-func NewMatch(queueData []QueueData, qt pb.QueueType) Match {
+func NewMatch(queueData []QueueData) Match {
 	players := map[QueueData]MatchAcceptStatus{}
 	for _, v := range players {
 		players[v] = MatchUnknown
 	}
 	return &Match{
-		players,
-		qt,
+		players: players,
+		chs:     []chan MatchStatus{},
 	}
 }
 
-func (m *Match) Accept(userID uint64, ch chan *pb.AcceptQueueResponse) error {
+func (m *Match) Accept(userID uint64, ch chan MatchStatus) error {
 	m.Lock()
 	defer m.Unlock()
 
@@ -40,11 +49,9 @@ func (m *Match) Accept(userID uint64, ch chan *pb.AcceptQueueResponse) error {
 			found = true
 			if v == MatchUnknown {
 				m.players[k] = MatchAccepted
-				sendState(m.getState())
-				return nil
+				break
 			} else if v == MatchDenied {
-				//user alreadu denied
-				sendState(m.getState())
+				//user already denied
 				return nil
 			}
 		}
@@ -61,14 +68,12 @@ func (m *Match) Decline(userID uint64) error {
 	m.Lock()
 	defer m.Unlock()
 
-	m.chs = append(m.chs, ch)
-
 	var found bool
 	for k, v := range m.players {
 		if userID == k.UserID {
 			if v == MatchUnknown {
 				m.players[k] = MatchDenied
-				return nil
+				break
 			} else if v == MatchAccepted {
 				//user already accepted
 				return nil
@@ -78,11 +83,12 @@ func (m *Match) Decline(userID uint64) error {
 	if !found {
 		return ErrUserNotInMatch
 	} else {
+		sendState(m.getState())
 		return nil
 	}
 }
 
-func (m *Match) getState() *pb.AcceptQueueResponse {
+func (m *Match) getState() MatchStatus {
 	accepted := 0
 	var cancelled bool
 
@@ -94,16 +100,16 @@ func (m *Match) getState() *pb.AcceptQueueResponse {
 		}
 	}
 
-	return &pb.AcceptQueueResponse{
+	return MatchStatus{
 		accepted,
 		len(m.players),
-		m.queueType,
 		cancelled,
 	}
 }
 
-func (m *Match) sendState(resp *pb.AcceptQueueResponse) {
+//sendState sends MatchStatus to all users in the match
+func (m *Match) sendState(state MatchStatus) {
 	for _, v := range m.chs {
-		v <- resp
+		v <- state
 	}
 }
