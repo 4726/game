@@ -1,5 +1,9 @@
 package main
 
+import (
+	"time"
+)
+
 type QueueData struct {
 	UserID uint64
  	Rating uint64
@@ -16,15 +20,28 @@ type QueueStatus struct {
 type Queue struct {
 	sync.Mutex
 	data []*QueueData
+	limit int
 }
 
 var ErrAlreadyInQueue = errors.New("user already in queue")
 var ErrDoesNotExist = errors.New("does not exist")
 var ErrNotAllExists = errors.New("not all exists")
+var ErrQueueFull = errors.New("queue full")
+
+func NewQueue() *Queue {
+	return &Queue{
+		data: []*QueueData{},
+		limit: 32766,
+	}
+}
 
 func (q *Queue) Enqueue(d *QueueData) error {
 	q.Lock()
 	defer q.Unlock()
+
+	if q.Len() >= q.limit {
+		return ErrQueueFull
+	}
 
 	for _, v := range q.data {
 		if d.UserID == v.UserID {
@@ -107,6 +124,13 @@ func (q *Queue) Clear() {
 	q.data = []QueueData{}
 }
 
+func (q *Queue) Len() {
+	q.Lock()
+	defer q.Unlock()
+
+	return len(q.data)
+}
+
 func (q *Queue) MarkMatchFound(userID uint64, found bool) {
 	q.Lock()
 	defer q.Unlock()
@@ -160,9 +184,9 @@ func (q *Queue) FindAndMarkMatchFoundWithinRatingRangeOrEnqueue(d *QueueData, ra
 			return []*QueueData{}, ErrAlreadyInQueue
 		}
 
-		if math.Abs(float64(d.Rating - v.Rating)) <= float64(ratingRange) {
-			if v.MatchFound {
-				//already found a match, waiting for accept
+		if math.Abs(float64(d.Rating - v.Rating)) <= float64(ratingRange / 2) {
+			if v.MatchFound { 
+				//player already found a match, ignore
 				continue
 			}
 			indexes = append(indexes, i)

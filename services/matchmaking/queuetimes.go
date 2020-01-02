@@ -17,6 +17,16 @@ type QueueTimes struct {
 	limit int
 }
 
+func NewQueueTimes(limit int) *QueueTimes {
+	if limit < 1 {
+		limit = 1
+	}
+	return &QueueTimes{
+		times: []QueueDuration{},
+		limit: limit,
+	}
+}
+
 func (qt *QueueTimes) Add(qd QueueDuration) {
 	qt.Lock()
 	defer qt.Unlock()
