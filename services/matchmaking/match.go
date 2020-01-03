@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"sync"
+	"time"
 )
 
 type MatchAcceptStatus int
@@ -15,7 +16,7 @@ const (
 
 type Match struct {
 	sync.Mutex
-	players map[QueueData]MatchAcceptStatus
+	players map[*QueueData]MatchAcceptStatus
 	chs     []chan MatchStatus
 }
 
@@ -26,17 +27,32 @@ type MatchStatus struct {
 
 var ErrUserNotInMatch = errors.New("user is not in this match")
 
-func NewMatch(queueData []QueueData) Match {
-	players := map[QueueData]MatchAcceptStatus{}
-	for _, v := range players {
+func NewMatch(queueData []*QueueData, timeout time.Duration) *Match {
+	players := map[*QueueData]MatchAcceptStatus{}
+	for _, v := range queueData {
 		players[v] = MatchUnknown
 	}
-	return &Match{
+
+	m := &Match{
 		players: players,
 		chs:     []chan MatchStatus{},
 	}
+
+	time.AfterFunc(timeout, func() {
+		m.Lock()
+		defer m.Unlock()
+
+		state := m.getState()
+		if state.TotalAccepted != state.TotalNeeded {
+			state.Cancelled = true
+			m.sendState(state)
+		}
+	})
+
+	return m
 }
 
+//Accept accepts the match request and subscribes to match status updates
 func (m *Match) Accept(userID uint64, ch chan MatchStatus) error {
 	m.Lock()
 	defer m.Unlock()
@@ -59,7 +75,7 @@ func (m *Match) Accept(userID uint64, ch chan MatchStatus) error {
 	if !found {
 		return ErrUserNotInMatch
 	} else {
-		sendState(m.getState())
+		m.sendState(m.getState())
 		return nil
 	}
 }
@@ -83,7 +99,7 @@ func (m *Match) Decline(userID uint64) error {
 	if !found {
 		return ErrUserNotInMatch
 	} else {
-		sendState(m.getState())
+		m.sendState(m.getState())
 		return nil
 	}
 }

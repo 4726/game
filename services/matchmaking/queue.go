@@ -1,26 +1,40 @@
 package main
 
+//todo: add multiqueue support(ex. 2 player queue/5 player queue/etc)
+
 import (
+	"errors"
+	"math"
+	"sync"
 	"time"
 )
 
+type PubSubTopic int
+
+const (
+	PubSubTopicAdd PubSubTopic = iota
+	PubSubTopicDelete
+	PubSubTopicMatchFound
+	PubSubTopicMatchNotFound
+)
+
 type QueueData struct {
-	UserID uint64
- 	Rating uint64
-	FoundCh chan QueueStatus
-	StartTime time.Time
+	UserID     uint64
+	Rating     uint64
+	startTime  time.Time
 	MatchFound bool
 }
 
-type QueueStatus struct {
-	MatchID uint64
-	MatchStarted bool
+type PubSubMessage struct {
+	Topic PubSubTopic
+	Data  QueueData
 }
 
 type Queue struct {
 	sync.Mutex
-	data []*QueueData
-	limit int
+	data        []QueueData
+	limit       int
+	subscribers []chan PubSubMessage
 }
 
 var ErrAlreadyInQueue = errors.New("user already in queue")
@@ -30,12 +44,14 @@ var ErrQueueFull = errors.New("queue full")
 
 func NewQueue() *Queue {
 	return &Queue{
-		data: []*QueueData{},
-		limit: 32766,
+		data:        []QueueData{},
+		limit:       32766,
+		subscribers: []chan PubSubMessage{},
 	}
 }
 
-func (q *Queue) Enqueue(d *QueueData) error {
+//Enqueue adds a user into the queue and notifies all subscribers
+func (q *Queue) Enqueue(userID, rating uint64) error {
 	q.Lock()
 	defer q.Unlock()
 
@@ -44,22 +60,28 @@ func (q *Queue) Enqueue(d *QueueData) error {
 	}
 
 	for _, v := range q.data {
-		if d.UserID == v.UserID {
+		if userID == v.UserID {
 			return ErrAlreadyInQueue
 		}
 	}
-	q.data = append(q.data, d)
+	qd := QueueData{userID, rating, time.Now(), false}
+	q.data = append(q.data, qd)
+	q.Publish(PubSubTopicAdd, qd)
 	return nil
 }
 
+//Dequeue removes a user from the queue and notifies all subscribers
 func (q *Queue) Dequeue() {
 	q.Lock()
 	defer q.Unlock()
 
+	deleted := q.data[0]
 	q.data = q.data[1:]
+	q.Publish(PubSubTopicDelete, deleted)
 }
 
-func (q *Queue) ForEach(fn func(*QueueData) bool) {
+//ForEach calls fn on all elements, return false to break early
+func (q *Queue) ForEach(fn func(QueueData) bool) {
 	q.Lock()
 	defer q.Unlock()
 
@@ -70,122 +92,85 @@ func (q *Queue) ForEach(fn func(*QueueData) bool) {
 	}
 }
 
-func (q* Queue) DeleteOne(userID uint64) error {
+//DeleteOne iterates over elements to find element with userID,
+//then deletes the element and notifies subscribers
+func (q *Queue) DeleteOne(userID uint64) error {
 	q.Lock()
 	defer q.Unlock()
 
 	var found bool
+	var qd QueueData
 	for i, v := range q.data {
-		if d.UserID == v.UserID {
+		if userID == v.UserID {
+			qd = v
+			found = true
 			if len(q.data) == 1 {
-				q.data = []*QueueData{}
+				q.data = []QueueData{}
 			} else {
 				q.data = append(q.data[:i], q.data[i+1:]...)
 			}
-			return nil
+			break
 		}
 	}
 	if !found {
 		return ErrDoesNotExist
 	}
+	q.Publish(PubSubTopicDelete, qd)
 	return nil
 }
 
-func (q *Queue) DeleteMultiple(userIDs []uint64, force bool) error {
-	q.Lock()
-	defer q.Unlock()
-
-	indexes := []int{}
-	for i, v := range q.data {
-		for _, v2 := range userIDs {
-			if v2.UserID == v.UserID {
-				index = append(index, i)
-			}
-		}
-	}
-
-	if !force && len(userIDs) != len(indexes) {
-		return ErrNotAllExists
-	}
-
-	for _, v := range indexes {
-		if len(q.data) == 1 {
-			q.data = []*QueueData{}
-		} else {
-			q.data = append(q.data[:v], q.data[v+1:]...)
-		}
-	}
-}
-
-func (q *Queue) Clear() {
-	q.Lock()
-	defer q.Unlock()
-
-	q.data = []QueueData{}
-}
-
-func (q *Queue) Len() {
+//Len returns length of queue
+func (q *Queue) Len() int {
 	q.Lock()
 	defer q.Unlock()
 
 	return len(q.data)
 }
 
-func (q *Queue) MarkMatchFound(userID uint64, found bool) {
+func (q *Queue) MarkMatchFound(userID uint64, found bool) error {
 	q.Lock()
 	defer q.Unlock()
 
+	var qd QueueData
+	var exists bool
+	var pubSubTopic PubSubTopic
+	if found {
+		pubSubTopic = PubSubTopicMatchFound
+	} else {
+		pubSubTopic = PubSubTopicMatchNotFound
+	}
 	for _, v := range q.data {
 		if userID == v.UserID {
+			exists = true
 			v.MatchFound = found
+			qd = v
+			break
 		}
 	}
-}
 
-func (q *Queue) MarkMatchFoundMultiple(userIDs []uint64, found bool) {
-	q.Lock()
-	defer q.Unlock()
-
-	for i, v := range q.data {
-		for _, v2 := range userIDs {
-			if v2.UserID == v.UserID {
-				v.MatchFound = found
-			}
-		}
+	if !exists {
+		return ErrDoesNotExist
 	}
+
+	q.Publish(pubSubTopic, qd)
+	return nil
 }
 
-func (q *Queue) SetMatchStartedAndDelete(userID, matchID uint64, started bool) {
+// FindMatchOrEnqueue tries to find a match for user,
+// if successful, will return []QueueData of other users in the match,
+// else will add the user to the queue
+func (q *Queue) FindMatchOrEnqueue(userID, rating, ratingRange uint64, total int) ([]QueueData, error) {
 	q.Lock()
 	defer q.Unlock()
 
 	indexes := []int{}
 	for i, v := range q.data {
 		if userID == v.UserID {
-			v.FoundCh <- QueueStatus{matchID, started}
-
-			if len(q.data) == 1 {
-				q.data = []*QueueData{}
-			} else {
-				q.data = append(q.data[:i], q.data[i+1:]...)
-			}
-			return
-		}
-	}
-}
-
-func (q *Queue) FindAndMarkMatchFoundWithinRatingRangeOrEnqueue(d *QueueData, ratingRange uint64, total int) ([]*QueueData, error) {
-	q.Lock()
-	defer q.Unlock()
-
-	indexes := []int{}
-	for i, v := range q.data {
-		if d.UserID == v.UserID {
-			return []*QueueData{}, ErrAlreadyInQueue
+			return []QueueData{}, ErrAlreadyInQueue
 		}
 
-		if math.Abs(float64(d.Rating - v.Rating)) <= float64(ratingRange / 2) {
-			if v.MatchFound { 
+		if math.Abs(float64(rating-v.Rating)) <= float64(ratingRange/2) {
+			if v.MatchFound {
 				//player already found a match, ignore
 				continue
 			}
@@ -194,15 +179,31 @@ func (q *Queue) FindAndMarkMatchFoundWithinRatingRangeOrEnqueue(d *QueueData, ra
 	}
 
 	if len(indexes) < total {
-		q.data = append(q.data, d)
-		return []*QueueData{}, nil
+		//Enqueue
+		qd := QueueData{userID, rating, time.Now(), false}
+		q.data = append(q.data, qd)
+		q.Publish(PubSubTopicDelete, qd)
+		return []QueueData{}, nil
 	}
 
-	users := []*QueueData{}
+	users := []QueueData{}
 	for _, v := range indexes {
+		//MarkMatchFound true
 		q.data[v].MatchFound = true
+		q.Publish(PubSubTopicMatchFound, q.data[v])
 		users = append(users, q.data[v])
 	}
 
 	return users, nil
+}
+
+func (q *Queue) Publish(topic PubSubTopic, qd QueueData) {
+	for _, v := range q.subscribers {
+		go func() {
+			select {
+			case v <- PubSubMessage{topic, qd}:
+			case <-time.After(time.Second * 10):
+			}
+		}()
+	}
 }

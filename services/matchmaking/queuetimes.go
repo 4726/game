@@ -42,7 +42,7 @@ func (qt *QueueTimes) EstimatedWaitTime(rating, ratingRange uint64) time.Duratio
 	defer qt.Unlock()
 
 	totalWithinRange := 0
-	totalDuration := 0
+	totalDuration := time.Duration(0)
 	for _, v := range qt.times {
 		if math.Abs(float64(rating-v.Rating)) <= float64(ratingRange) {
 			totalWithinRange++
@@ -50,5 +50,5 @@ func (qt *QueueTimes) EstimatedWaitTime(rating, ratingRange uint64) time.Duratio
 		}
 	}
 
-	return totalDuration / totalWithinRange
+	return totalDuration / time.Duration(totalWithinRange)
 }

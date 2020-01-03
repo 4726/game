@@ -3,6 +3,10 @@ package main
 import (
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/4726/game/services/matchmaking/pb"
 	"google.golang.org/grpc"
 )
@@ -13,16 +17,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, )
-	go func() {
-		sig := <-c
-		s.GracefulStop()
-	}()
-
 	server := grpc.NewServer()
 	service := NewQueueService(QueueServiceOptions{100, 10})
 	pb.RegisterQueueServer(server, service)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-c
+		server.GracefulStop()
+	}()
 
 	serveCh := make(chan error, 1)
 	go func() {
