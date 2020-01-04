@@ -27,7 +27,7 @@ type MatchStatus struct {
 
 var ErrUserNotInMatch = errors.New("user is not in this match")
 
-func NewMatch(queueData []*QueueData, timeout time.Duration) *Match {
+func NewMatch(users []uint64, timeout time.Duration) *Match {
 	players := map[*QueueData]MatchAcceptStatus{}
 	for _, v := range queueData {
 		players[v] = MatchUnknown

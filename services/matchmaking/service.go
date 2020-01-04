@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"time"
+	"sync"
 
 	"github.com/4726/game/services/matchmaking/pb"
 )
@@ -12,6 +13,14 @@ type QueueService struct {
 	matches    map[uint64]Match
 	queueTimes *QueueTimes
 	opts       QueueServiceOptions
+	inQueue map[uint64]QueueChannels
+	inQueueLock sync.Mutex
+}
+
+type QueueChannels struct {
+	LeaveCh chan struct{} //no longer in queue
+	MatchFoundCh chan uint64 //match found waiting for accept
+	MatchStartFail chan struct{} //not all users accepted the match
 }
 
 type QueueServiceOptions struct {
@@ -26,71 +35,81 @@ func NewQueueService(opts QueueServiceOptions) *QueueService {
 	queues := map[pb.QueueType]*Queue{}
 	queues[pb.QueueType_UNRANKED] = NewQueue()
 	queues[pb.QueueType_RANKED] = NewQueue()
-	return &QueueService{
+	qs := &QueueService{
 		queues,
 		map[uint64]Match{},
 		NewQueueTimes(1000),
 		opts,
+		map[uint64]QueueChannels{},
+		sync.Mutex{},
 	}
+	qs.notifyQueueStateChanges()
+	return qs
 }
 
 func (s *QueueService) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServer) error {
 	queue := s.queues[in.GetQueueType()]
 
-	foundCh := make(chan QueueStatus, 1)
-	startTime := time.Now()
-	qd := &QueueData{in.GetUserId(), in.GetRating(), foundCh, startTime, false}
-	users, err := queue.FindAndMarkMatchFoundWithinRatingRangeOrEnqueue(qd, s.opts.RatingRange, s.opts.PlayerCount)
+	found, matchID, users, err := queue.EnqueueAndFindMatch(in.GetUserId(), in.GetRating(), s.opts.RatingRange, s.opts.PlayerCount)
 	if err != nil {
 		return err
 	}
 
-	matchFoundFn := func() (bool, error) {
-		status = <-foundCh
-		if status.MatchStarted {
-			return true, nil
-		}
-		s.queueTimes.Add(QueueDuration{in.GetRating(), time.Since(startTime)})
-
-		resp := &pb.JoinQueueResponse{
-			UserId: in.GetUserId(),
+	if !found {
+		resp := &JoinQueueResponse {
+			UserID: in.GetUserId(),
 			QueueType: in.GetQueueType(),
-			MatchId: status.MatchID,
-			Found: true,
-			SecondsToAccept: uint32(20),
+			MatchId: uint64(0),
+			Found: false,
+			SecondsToAccept: 20,
 		}
-
-		err := outStream.Send(resp)
-		return false, err
-	}
-
-	if len(users) > 0 {
-		matchID, _ := s.getMatchID()
-		s.matches[matchID] == NewMatch(users, time.Second*20)
-		for _, v := range users {
-			v.FoundCh <- QueueStatus{matchID, false}
-		}
-		s.queueTimes.Add(QueueDuration{in.GetRating(), time.Since(startTime)})
-
-		resp := &JoinQueueResponse{
-			in.GetUserId(),
-			in.GetQueueType(),
-			matchID,
-			true,
-			uint32(20),
-		}
-
 		if err := outStream.Send(resp); err != nil {
+			queue.DeleteOne(in.GetUserId())
 			return err
 		}
+	} else {
+		userIDs := []uint64{}
+		for _, v := range users {
+			userIDs = append(userIDs, v.UserID)
+		}
+		s.matches[matchID] = NewMatch(userIDs, time.Second * 20)
 	}
+
+	leaveQueueCh := make(chan struct{}, 1)
+	matchFoundCh := make(chan uint64, 1)
+	matchStartFailCh := make(chan struct{}, 1)
+	s.inQueueLock.Lock()
+	s.inQueue[in.GetQueueType()] = QueueChannels{leaveQueueCh, matchFoundCh, matchStartFailCh}
+	s.inQueueLock.Unlock()
+	
 	for {
-		stop, err := matchFoundFn()
-		if err != nil {
-			return err
-		}
-		if stop {
+		select {
+		case <- leaveQueueCh:
 			return nil
+		case matchID := <- matchFoundCh:
+			resp := &JoinQueueResponse {
+				UserID: in.GetUserId(),
+				QueueType: in.GetQueueType(),
+				MatchId: matchID,
+				Found: true,
+				SecondsToAccept: 20,
+			}
+			if err := outStream.Send(resp); err != nil {
+				queue.DeleteOne(in.GetUserId())
+				return err
+			}
+		case <- matchStartFailCh:
+			resp := &JoinQueueResponse {
+				UserID: in.GetUserId(),
+				QueueType: in.GetQueueType(),
+				MatchId: uint64(0),
+				Found: false,
+				SecondsToAccept: 20,
+			}
+			if err := outStream.Send(resp); err != nil {
+				queue.DeleteOne(in.GetUserId())
+				return err
+			}
 		}
 	}
 }
@@ -151,11 +170,31 @@ func (s *QueueService) Decline(ctx context.Context, in *pb.DeclineQueueRequest) 
 func (s *QueueService) Info(ctx context.Context, in *pb.QueueInfoRequest) (*pb.QueueInfoResponse, error) {
 	estimatedWaitTime := s.queueTimes.EstimatedWaitTime(in.GetRating(), 100)
 
-	return &QueueInfoResponse{
+	return &pb.QueueInfoResponse{
 		uint32(estimatedWaitTime.Seconds()),
 	}, nil
 }
 
-func (s *QueueService) getMatchID() (uint64, error) {
-	return 1, nil
+func (s *QueueStatus) notifyQueueStateChanges() {
+	ch := make(chan PubSubMessage, 1)
+	s.queues[0].Subscribe(ch)
+	for {
+		msg := <- ch
+		userID := msg.QueueData.UserID
+		s.inQueueLock.Lock()
+		qChs, ok := s.inQueue[userID]
+		if !ok {
+			s.inQueueLock.Unlock()
+			continue
+		}
+		switch msg.Topic {
+		case PubSubTopicDelete:
+			qChs.LeaveCh <- struct{}{}
+		case PubSubTopicMatchFound:
+			qChs.MatchFoundCh <- msg.QueueData.MatchID
+		case PubSubTopicMatchNotFound:
+			qChs. MatchStartFail <- struct{}{}
+		}
+		s.inQueueLock.Unlock()
+	}
 }
