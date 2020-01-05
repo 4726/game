@@ -23,10 +23,6 @@ func main() {
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		sig := <-c
-		server.GracefulStop()
-	}()
 
 	serveCh := make(chan error, 1)
 	go func() {
@@ -39,5 +35,6 @@ func main() {
 		log.Fatal(err)
 	case sig := <-c:
 		log.Fatal(sig.String())
+		server.GracefulStop()
 	}
 }

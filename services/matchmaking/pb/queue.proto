@@ -65,6 +65,7 @@ message QueueInfoRequest {
 
 message QueueInfoResponse {
     uint32 seconds_estimated = 1;
+    uint32 user_count = 2;
 }
 
 enum QueueType {

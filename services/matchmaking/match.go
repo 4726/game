@@ -10,14 +10,14 @@ type MatchAcceptStatus int
 
 const (
 	MatchAccepted MatchAcceptStatus = iota
-	MatchDenied
+	MatchDeclined
 	MatchUnknown
 )
 
 type Match struct {
 	sync.Mutex
-	players map[*QueueData]MatchAcceptStatus
-	chs     []chan MatchStatus
+	players     map[uint64]MatchAcceptStatus
+	subscribers []chan MatchStatus
 }
 
 type MatchStatus struct {
@@ -26,16 +26,18 @@ type MatchStatus struct {
 }
 
 var ErrUserNotInMatch = errors.New("user is not in this match")
+var ErrUserAlreadyAccepted = errors.New("user already accepted")
+var ErrUserAlreadyDeclined = errors.New("user already declined")
 
 func NewMatch(users []uint64, timeout time.Duration) *Match {
-	players := map[*QueueData]MatchAcceptStatus{}
-	for _, v := range queueData {
+	players := map[uint64]MatchAcceptStatus{}
+	for _, v := range users {
 		players[v] = MatchUnknown
 	}
 
 	m := &Match{
-		players: players,
-		chs:     []chan MatchStatus{},
+		players:     players,
+		subscribers: []chan MatchStatus{},
 	}
 
 	time.AfterFunc(timeout, func() {
@@ -57,18 +59,19 @@ func (m *Match) Accept(userID uint64, ch chan MatchStatus) error {
 	m.Lock()
 	defer m.Unlock()
 
-	m.chs = append(m.chs, ch)
+	m.subscribers = append(m.subscribers, ch)
 
 	var found bool
 	for k, v := range m.players {
-		if userID == k.UserID {
+		if userID == k {
 			found = true
 			if v == MatchUnknown {
 				m.players[k] = MatchAccepted
 				break
-			} else if v == MatchDenied {
-				//user already denied
-				return nil
+			} else if v == MatchDeclined {
+				return ErrUserAlreadyDeclined
+			} else if v == MatchAccepted {
+				return ErrUserAlreadyAccepted
 			}
 		}
 	}
@@ -86,13 +89,15 @@ func (m *Match) Decline(userID uint64) error {
 
 	var found bool
 	for k, v := range m.players {
-		if userID == k.UserID {
+		if userID == k {
+			found = true
 			if v == MatchUnknown {
-				m.players[k] = MatchDenied
+				m.players[k] = MatchDeclined
 				break
 			} else if v == MatchAccepted {
-				//user already accepted
-				return nil
+				return ErrUserAlreadyAccepted
+			} else if v == MatchDeclined {
+				return ErrUserAlreadyDeclined
 			}
 		}
 	}
@@ -111,7 +116,7 @@ func (m *Match) getState() MatchStatus {
 	for _, v := range m.players {
 		if v == MatchAccepted {
 			accepted++
-		} else if v == MatchDenied {
+		} else if v == MatchDeclined {
 			cancelled = true
 		}
 	}
@@ -125,7 +130,7 @@ func (m *Match) getState() MatchStatus {
 
 //sendState sends MatchStatus to all users in the match
 func (m *Match) sendState(state MatchStatus) {
-	for _, v := range m.chs {
+	for _, v := range m.subscribers {
 		v <- state
 	}
 }

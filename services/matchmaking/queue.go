@@ -199,7 +199,7 @@ func (q *Queue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, total in
 	qds = []QueueData{}
 	for _, v := range indexes[:total] {
 		qd := q.data[v]
-		updatedQD = QueueData{qd.UserID, qd.Rating, qd.StartTime, true, matchID}
+		updatedQD := QueueData{qd.UserID, qd.Rating, qd.StartTime, true, matchID}
 		q.data[v] = updatedQD
 		q.publish(PubSubTopicMatchFound, q.data[v])
 		qds = append(qds, q.data[v])
