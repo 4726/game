@@ -35,8 +35,8 @@ type QueueServiceOptions struct {
 
 func NewQueueService(opts QueueServiceOptions) *QueueService {
 	queues := map[pb.QueueType]*Queue{}
-	queues[pb.QueueType_UNRANKED] = NewQueue()
-	queues[pb.QueueType_RANKED] = NewQueue()
+	queues[pb.QueueType_UNRANKED] = NewQueue(10000)
+	queues[pb.QueueType_RANKED] = NewQueue(10000)
 	queueTimes := map[pb.QueueType]*QueueTimes{}
 	queueTimes[pb.QueueType_UNRANKED] = NewQueueTimes(1000)
 	queueTimes[pb.QueueType_RANKED] = NewQueueTimes(1000)
@@ -152,6 +152,7 @@ func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Acce
 			TotalNeeded:   uint32(status.TotalNeeded),
 			QueueType:     in.GetQueueType(),
 			Cancelled:     status.Cancelled,
+			UserIds:       status.Players,
 		}
 		if err := outStream.Send(resp); err != nil {
 			return err

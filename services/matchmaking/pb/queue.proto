@@ -44,6 +44,7 @@ message AcceptQueueResponse {
     uint32 total_needed = 2;
     QueueType queue_type = 3;
     bool cancelled = 4;
+    repeated uint64 user_ids = 5;
 }
 
 message DeclineQueueRequest {

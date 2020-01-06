@@ -44,10 +44,10 @@ var ErrDoesNotExist = errors.New("does not exist")
 var ErrNotAllExists = errors.New("not all exists")
 var ErrQueueFull = errors.New("queue full")
 
-func NewQueue() *Queue {
+func NewQueue(limit int) *Queue {
 	return &Queue{
 		data:        []QueueData{},
-		limit:       32766,
+		limit:       limit,
 		subscribers: []chan PubSubMessage{},
 		matchID:     uint64(0),
 	}
@@ -58,7 +58,7 @@ func (q *Queue) Enqueue(userID, rating uint64) error {
 	q.Lock()
 	defer q.Unlock()
 
-	if q.Len() >= q.limit {
+	if len(q.data) >= q.limit {
 		return ErrQueueFull
 	}
 
@@ -214,12 +214,12 @@ func (q *Queue) Subscribe(ch chan PubSubMessage) {
 
 func (q *Queue) publish(topic PubSubTopic, qd QueueData) {
 	for _, v := range q.subscribers {
-		go func() {
+		go func(ch chan PubSubMessage) {
 			select {
-			case v <- PubSubMessage{topic, qd}:
+			case ch <- PubSubMessage{topic, qd}:
 			case <-time.After(time.Second * 10):
 			}
-		}()
+		}(v)
 	}
 }
 

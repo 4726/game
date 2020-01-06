@@ -18,11 +18,13 @@ type Match struct {
 	sync.Mutex
 	players     map[uint64]MatchAcceptStatus
 	subscribers []chan MatchStatus
+	cancelled   bool
 }
 
 type MatchStatus struct {
 	TotalAccepted, TotalNeeded int
 	Cancelled                  bool
+	Players                    []uint64
 }
 
 var ErrUserNotInMatch = errors.New("user is not in this match")
@@ -38,15 +40,17 @@ func NewMatch(users []uint64, timeout time.Duration) *Match {
 	m := &Match{
 		players:     players,
 		subscribers: []chan MatchStatus{},
+		cancelled:   false,
 	}
 
 	time.AfterFunc(timeout, func() {
 		m.Lock()
 		defer m.Unlock()
 
+		m.cancelled = true
+
 		state := m.getState()
 		if state.TotalAccepted != state.TotalNeeded {
-			state.Cancelled = true
 			m.sendState(state)
 		}
 	})
@@ -111,20 +115,24 @@ func (m *Match) Decline(userID uint64) error {
 
 func (m *Match) getState() MatchStatus {
 	accepted := 0
-	var cancelled bool
+	cancelled := m.cancelled
 
-	for _, v := range m.players {
+	players := []uint64{}
+
+	for k, v := range m.players {
 		if v == MatchAccepted {
 			accepted++
 		} else if v == MatchDeclined {
 			cancelled = true
 		}
+		players = append(players, k)
 	}
 
 	return MatchStatus{
 		accepted,
 		len(m.players),
 		cancelled,
+		players,
 	}
 }
 
