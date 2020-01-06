@@ -4,7 +4,6 @@ package main
 
 import (
 	"errors"
-	"math"
 	"sync"
 	"time"
 )
@@ -171,8 +170,14 @@ func (q *Queue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, total in
 			err = ErrAlreadyInQueue
 			return
 		}
+		var ratingDifference uint64
+		if rating < v.Rating {
+			ratingDifference = v.Rating - rating
+		} else {
+			ratingDifference = rating - v.Rating
+		}
 
-		if math.Abs(float64(rating-v.Rating)) <= float64(ratingRange/2) {
+		if ratingDifference <= ratingRange/2 {
 			if v.MatchFound {
 				//player already found a match, ignore
 				continue
@@ -181,20 +186,18 @@ func (q *Queue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, total in
 		}
 	}
 
+	indexes = append(indexes, len(q.data))
 	if len(indexes) < total {
-		qd := QueueData{userID, rating, time.Now(), false, uint64(0)}
+		qd := QueueData{userID, rating, time.Now(), false, 0}
 		q.data = append(q.data, qd)
 		q.publish(PubSubTopicAdd, qd)
 		return
 	}
 
 	matchID = q.getMatchID()
-
 	qd := QueueData{userID, rating, time.Now(), true, matchID}
 	q.data = append(q.data, qd)
 	q.publish(PubSubTopicAdd, qd)
-	q.publish(PubSubTopicMatchFound, qd)
-
 	found = true
 	qds = []QueueData{}
 	for _, v := range indexes[:total] {
