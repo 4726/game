@@ -48,16 +48,18 @@ func NewQueueService(opts QueueServiceOptions) *QueueService {
 		map[uint64]QueueChannels{},
 		sync.Mutex{},
 	}
-	qs.notifyQueueStateChanges()
+	go qs.notifyQueueStateChanges()
 	return qs
 }
 
 func (s *QueueService) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServer) error {
 	queue := s.queues[in.GetQueueType()]
-
 	found, matchID, users, err := queue.EnqueueAndFindMatch(in.GetUserId(), in.GetRating(), s.opts.RatingRange, s.opts.PlayerCount)
 	if err != nil {
-		return err
+		if err == ErrAlreadyInQueue {
+			return status.Error(codes.FailedPrecondition, err.Error())
+		}
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	if !found {
@@ -135,14 +137,14 @@ func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Acce
 
 	match, ok := s.matches[in.GetMatchId()]
 	if !ok {
-		return status.Error(codes.InvalidArgument, "invalid match id")
+		return status.Error(codes.FailedPrecondition, "invalid match id")
 	}
 	ch := make(chan MatchStatus, 1)
 	if err := match.Accept(in.GetUserId(), ch); err != nil {
 		if err == ErrUserNotInMatch {
-			return status.Error(codes.InvalidArgument, "invalid match id")
+			return status.Error(codes.FailedPrecondition, err.Error())
 		}
-		return status.Error(codes.Unknown, err.Error())
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	for {
@@ -177,13 +179,13 @@ func (s *QueueService) Decline(ctx context.Context, in *pb.DeclineQueueRequest) 
 
 	match, ok := s.matches[in.GetMatchId()]
 	if !ok {
-		return nil, status.Error(codes.InvalidArgument, "invalid match id")
+		return nil, status.Error(codes.FailedPrecondition, "invalid match id")
 	}
 	if err := match.Decline(in.GetUserId()); err != nil {
 		if err == ErrUserNotInMatch {
-			return nil, status.Error(codes.InvalidArgument, "invalid match id")
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
 		}
-		return nil, status.Error(codes.Unknown, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	queue.DeleteOne(in.GetUserId())

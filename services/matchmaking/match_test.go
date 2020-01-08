@@ -7,13 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func assertMatchStatusEqual(t testing.TB, expected, actual MatchStatus) {
-	assert.Equal(t, expected.TotalAccepted, actual.TotalAccepted)
-	assert.Equal(t, expected.TotalNeeded, actual.TotalNeeded)
-	assert.Equal(t, expected.Cancelled, actual.Cancelled)
-	assert.ElementsMatch(t, expected.Players, actual.Players)
-}
-
 func TestMatchAcceptUserDoesNotExist(t *testing.T) {
 	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20)
 	ch := make(chan MatchStatus, 1)
@@ -121,4 +114,11 @@ func TestMatchDecline(t *testing.T) {
 	expectedStatus := MatchStatus{1, 10, true, players}
 	assertMatchStatusEqual(t, expectedStatus, status)
 	assert.Empty(t, ch)
+}
+
+func assertMatchStatusEqual(t testing.TB, expected, actual MatchStatus) {
+	assert.Equal(t, expected.TotalAccepted, actual.TotalAccepted)
+	assert.Equal(t, expected.TotalNeeded, actual.TotalNeeded)
+	assert.Equal(t, expected.Cancelled, actual.Cancelled)
+	assert.ElementsMatch(t, expected.Players, actual.Players)
 }
