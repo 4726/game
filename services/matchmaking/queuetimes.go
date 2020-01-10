@@ -50,5 +50,9 @@ func (qt *QueueTimes) EstimatedWaitTime(rating, ratingRange uint64) time.Duratio
 		}
 	}
 
+	if totalWithinRange == 0 {
+		return time.Duration(0)
+	}
+
 	return totalDuration / time.Duration(totalWithinRange)
 }

@@ -51,12 +51,16 @@ func NewQueueService(opts QueueServiceOptions) *QueueService {
 			qs.matchesLock.Lock()
 			for k, v := range qs.matches {
 				if v.TimeSince() < defaultMatchAcceptTimeout {
+					state := v.State()
+					for _, userID := range state.Unknown {
+						//remove all players that didnt reply from the queue
+						qs.queue.DeleteOne(userID)
+					}
 					delete(qs.matches, k)
 				}
 			}
 			qs.matchesLock.Unlock()
 		}
-
 	}()
 
 	go qs.notifyQueueStateChanges()
@@ -151,16 +155,22 @@ func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Acce
 	s.matchesLock.Lock()
 	match, ok := s.matches[in.GetMatchId()]
 	s.matchesLock.Unlock()
+
+	readdToQueue := true
+	defer func() {
+		if readdToQueue {
+			s.queue.MarkMatchFound(in.GetUserId(), false)
+		}
+	}()
+
 	if !ok {
 		//happens when someone denied or match times out
-		s.queue.MarkMatchFound(in.GetUserId(), false)
 		return status.Error(codes.FailedPrecondition, ErrUserNotInMatch.Error())
 	}
 	ch := make(chan MatchStatus, 1)
 	if err := match.Accept(in.GetUserId(), ch); err != nil {
 		if err == ErrUserNotInMatch {
 			//client error
-			s.queue.MarkMatchFound(in.GetUserId(), false)
 			return status.Error(codes.FailedPrecondition, err.Error())
 		}
 		if err == ErrMatchCancelled {
@@ -168,6 +178,7 @@ func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Acce
 			s.matchesLock.Lock()
 			delete(s.matches, in.GetMatchId())
 			s.matchesLock.Unlock()
+			readdToQueue = false
 			return status.Error(codes.FailedPrecondition, err.Error())
 		}
 		return status.Error(codes.Internal, err.Error())
@@ -177,7 +188,6 @@ func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Acce
 		status, ok := <-ch
 		if !ok {
 			//should not go here, keep just in case
-			s.queue.MarkMatchFound(in.GetUserId(), false)
 			return nil
 		}
 
@@ -188,7 +198,6 @@ func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Acce
 			UserIds:       status.Players,
 		}
 		if err := outStream.Send(resp); err != nil {
-			s.queue.MarkMatchFound(in.GetUserId(), false)
 			return err
 		}
 		if resp.Cancelled {
@@ -204,6 +213,7 @@ func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Acce
 			//also removes match
 			s.queue.DeleteOne(in.GetUserId())
 			delete(s.matches, in.GetMatchId())
+			readdToQueue = false
 			return nil
 		}
 	}

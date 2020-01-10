@@ -26,6 +26,7 @@ type MatchStatus struct {
 	TotalAccepted, TotalNeeded int
 	Cancelled                  bool
 	Players                    []uint64
+	Unknown                    []uint64
 }
 
 var ErrUserNotInMatch = errors.New("user is not in this match")
@@ -114,7 +115,17 @@ func (m *Match) Decline(userID uint64) error {
 }
 
 func (m *Match) TimeSince() time.Duration {
+	m.Lock()
+	defer m.Unlock()
+
 	return time.Since(m.startTime)
+}
+
+func (m *Match) State() MatchStatus {
+	m.Lock()
+	defer m.Unlock()
+
+	return m.getState()
 }
 
 func (m *Match) getState() MatchStatus {
@@ -122,12 +133,15 @@ func (m *Match) getState() MatchStatus {
 	var cancelled bool
 
 	players := []uint64{}
+	unknown := []uint64{}
 
 	for k, v := range m.players {
 		if v == MatchAccepted {
 			accepted++
 		} else if v == MatchDeclined {
 			cancelled = true
+		} else if v == MatchUnknown {
+			unknown = append(unknown, k)
 		}
 		players = append(players, k)
 	}
@@ -137,6 +151,7 @@ func (m *Match) getState() MatchStatus {
 		len(m.players),
 		cancelled,
 		players,
+		unknown,
 	}
 }
 

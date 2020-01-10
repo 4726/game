@@ -37,7 +37,7 @@ func TestMatchAccept(t *testing.T) {
 	assert.NoError(t, m.Accept(1, ch))
 
 	status := <-ch
-	expectedStatus := MatchStatus{1, 10, false, players}
+	expectedStatus := MatchStatus{1, 10, false, players, []uint64{2, 3, 4, 5, 6, 7, 8, 9, 10}}
 	assertMatchStatusEqual(t, expectedStatus, status)
 	assert.Empty(t, ch)
 
@@ -45,7 +45,7 @@ func TestMatchAccept(t *testing.T) {
 	m.Accept(2, ch2)
 
 	status = <-ch
-	expectedStatus = MatchStatus{2, 10, false, players}
+	expectedStatus = MatchStatus{2, 10, false, players, []uint64{3, 4, 5, 6, 7, 8, 9, 10}}
 	assertMatchStatusEqual(t, expectedStatus, status)
 	assert.Empty(t, ch)
 
@@ -89,4 +89,5 @@ func assertMatchStatusEqual(t testing.TB, expected, actual MatchStatus) {
 	assert.Equal(t, expected.TotalNeeded, actual.TotalNeeded)
 	assert.Equal(t, expected.Cancelled, actual.Cancelled)
 	assert.ElementsMatch(t, expected.Players, actual.Players)
+	assert.ElementsMatch(t, expected.Unknown, actual.Unknown)
 }

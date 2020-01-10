@@ -15,9 +15,10 @@ import (
 )
 
 type test struct {
-	s *grpc.Server
-	c pb.QueueClient
-	l net.Listener
+	s  *grpc.Server
+	c  pb.QueueClient
+	l  net.Listener
+	qs *QueueService
 }
 
 func newTest(t testing.TB) *test {
@@ -33,7 +34,7 @@ func newTest(t testing.TB) *test {
 	assert.NoError(t, err)
 	c := pb.NewQueueClient(conn)
 
-	return &test{server, c, lis}
+	return &test{server, c, lis, service}
 }
 
 func (te *test) teardown() {
@@ -57,6 +58,8 @@ func TestServiceJoinAlreadyInQueue(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = outStream.Recv()
 	assert.Equal(t, codes.FailedPrecondition, status.Code(err))
+	time.Sleep(time.Second * 2)
+	assert.True(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceJoinMatchFound(t *testing.T) {
@@ -96,6 +99,8 @@ func TestServiceJoinMatchFound(t *testing.T) {
 	}
 	assert.ElementsMatch(t, []*pb.JoinQueueResponse{resp, resp2}, []*pb.JoinQueueResponse{expectedResp, expectedResp2})
 	assertEmptyRecv(t, outStream)
+	time.Sleep(time.Second * 2)
+	assert.False(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceJoinMatchFoundLater(t *testing.T) {
@@ -135,6 +140,8 @@ func TestServiceJoinMatchFoundLater(t *testing.T) {
 	}
 	assert.ElementsMatch(t, []*pb.JoinQueueResponse{resp, resp2}, []*pb.JoinQueueResponse{expectedResp, expectedResp2})
 	assertEmptyRecv(t, outStream)
+	time.Sleep(time.Second * 2)
+	assert.False(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceJoin(t *testing.T) {
@@ -156,6 +163,8 @@ func TestServiceJoin(t *testing.T) {
 	}
 	assert.Equal(t, expectedResp, resp)
 	assertEmptyRecv(t, outStream)
+	time.Sleep(time.Second * 2)
+	assert.True(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceLeaveNotInQueue(t *testing.T) {
@@ -170,6 +179,8 @@ func TestServiceLeaveNotInQueue(t *testing.T) {
 		UserId: in.GetUserId(),
 	}
 	assert.Equal(t, expectedResp, resp)
+	time.Sleep(time.Second * 2)
+	assert.False(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceLeave(t *testing.T) {
@@ -180,6 +191,7 @@ func TestServiceLeave(t *testing.T) {
 		Rating: 1000,
 	}
 	te.c.Join(context.Background(), joinIn)
+	time.Sleep(time.Second * 2)
 
 	in := &pb.LeaveQueueRequest{
 		UserId: 1,
@@ -190,6 +202,8 @@ func TestServiceLeave(t *testing.T) {
 		UserId: in.GetUserId(),
 	}
 	assert.Equal(t, expectedResp, resp)
+	time.Sleep(time.Second * 2)
+	assert.False(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceAcceptMatchDoesNotExist(t *testing.T) {
@@ -205,6 +219,8 @@ func TestServiceAcceptMatchDoesNotExist(t *testing.T) {
 	_, err = outStream.Recv()
 	expectedErr := status.Error(codes.FailedPrecondition, ErrUserNotInMatch.Error())
 	assert.Equal(t, expectedErr, err)
+	time.Sleep(time.Second * 2)
+	assert.False(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceAcceptNotInMatch(t *testing.T) {
@@ -230,6 +246,8 @@ func TestServiceAcceptNotInMatch(t *testing.T) {
 	_, err = outStream.Recv()
 	expectedErr := status.Error(codes.FailedPrecondition, ErrUserNotInMatch.Error())
 	assert.Equal(t, expectedErr, err)
+	time.Sleep(time.Second * 2)
+	assert.False(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceAcceptAllAccepted(t *testing.T) {
@@ -272,6 +290,8 @@ func TestServiceAcceptAllAccepted(t *testing.T) {
 	expectedResp.UserIds = nil
 	resp.UserIds = nil
 	assert.Equal(t, expectedResp, resp)
+	time.Sleep(time.Second * 2)
+	assert.False(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceAcceptAllAcceptedLater(t *testing.T) {
@@ -325,6 +345,8 @@ func TestServiceAcceptAllAcceptedLater(t *testing.T) {
 	}
 
 	assert.ElementsMatch(t, expectedResps, resps)
+	time.Sleep(time.Second * 2)
+	assert.False(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceAcceptOneDeniedBefore(t *testing.T) {
@@ -357,6 +379,8 @@ func TestServiceAcceptOneDeniedBefore(t *testing.T) {
 	_, err = outStream.Recv()
 	expectedErr := status.Error(codes.FailedPrecondition, ErrUserNotInMatch.Error())
 	assert.Equal(t, expectedErr, err)
+	time.Sleep(time.Second * 2)
+	assert.True(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceAcceptOneDeniedAfter(t *testing.T) {
@@ -393,6 +417,8 @@ func TestServiceAcceptOneDeniedAfter(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = outStream.Recv()
 	assert.Equal(t, io.EOF, err)
+	time.Sleep(time.Second * 2)
+	assert.True(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceAcceptTimeout(t *testing.T) {
@@ -429,6 +455,8 @@ func TestServiceAcceptTimeout(t *testing.T) {
 	_, err = outStream.Recv()
 	expectedErr := status.Error(codes.FailedPrecondition, ErrUserNotInMatch.Error())
 	assert.Equal(t, expectedErr, err)
+	time.Sleep(time.Second * 2)
+	assert.False(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceDeclineMatchDoesNotExist(t *testing.T) {
@@ -441,6 +469,8 @@ func TestServiceDeclineMatchDoesNotExist(t *testing.T) {
 	_, err := te.c.Decline(context.Background(), in)
 	expectedErr := status.Error(codes.FailedPrecondition, ErrUserNotInMatch.Error())
 	assert.Equal(t, expectedErr, err)
+	time.Sleep(time.Second * 2)
+	assert.False(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceDeclineNotInMatch(t *testing.T) {
@@ -464,6 +494,8 @@ func TestServiceDeclineNotInMatch(t *testing.T) {
 	_, err := te.c.Decline(context.Background(), in)
 	expectedErr := status.Error(codes.FailedPrecondition, ErrUserNotInMatch.Error())
 	assert.Equal(t, expectedErr, err)
+	time.Sleep(time.Second * 2)
+	assert.False(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceDecline(t *testing.T) {
@@ -490,9 +522,47 @@ func TestServiceDecline(t *testing.T) {
 	}
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
+	time.Sleep(time.Second * 2)
+	assert.False(t, testIsInQueue(te, in.GetUserId()))
 }
 
 func TestServiceInfo(t *testing.T) {
+	te := newTest(t)
+	defer te.teardown()
+
+	for i := 1; i < 6; i++ {
+		in := &pb.JoinQueueRequest{
+			UserId: uint64(i),
+			Rating: 1000,
+		}
+		_, err := te.c.Join(context.Background(), in)
+		assert.NoError(t, err)
+	}
+	time.Sleep(time.Second * 2)
+
+	in := &pb.QueueInfoRequest{
+		UserId: 6,
+		Rating: 1000,
+	}
+	resp, err := te.c.Info(context.Background(), in)
+	expectedResp := &pb.QueueInfoResponse{
+		SecondsEstimated: uint32(0),
+		UserCount:        5,
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, expectedResp, resp)
+}
+
+func testIsInQueue(te *test, userID uint64) bool {
+	var inQueue bool
+	te.qs.queue.ForEach(func(qd QueueData) bool {
+		if qd.UserID == userID {
+			inQueue = !qd.MatchFound
+			return false
+		}
+		return true
+	})
+	return inQueue
 }
 
 func assertEmptyRecv(t testing.TB, stream grpc.ClientStream) {
