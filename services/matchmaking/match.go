@@ -16,9 +16,10 @@ const (
 
 type Match struct {
 	sync.Mutex
-	players     map[uint64]MatchAcceptStatus
-	subscribers []chan MatchStatus
-	cancelled   bool
+	players      map[uint64]MatchAcceptStatus
+	subscribers  []chan MatchStatus
+	cancelled    bool
+	timeoutTimer *time.Timer
 }
 
 type MatchStatus struct {
@@ -30,6 +31,7 @@ type MatchStatus struct {
 var ErrUserNotInMatch = errors.New("user is not in this match")
 var ErrUserAlreadyAccepted = errors.New("user already accepted")
 var ErrUserAlreadyDeclined = errors.New("user already declined")
+var ErrMatchCancelled = errors.New("match is cancelled")
 
 func NewMatch(users []uint64, timeout time.Duration) *Match {
 	players := map[uint64]MatchAcceptStatus{}
@@ -43,16 +45,13 @@ func NewMatch(users []uint64, timeout time.Duration) *Match {
 		cancelled:   false,
 	}
 
-	time.AfterFunc(timeout, func() {
+	m.timeoutTimer = time.AfterFunc(timeout, func() {
 		m.Lock()
 		defer m.Unlock()
 
-		m.cancelled = true
-
 		state := m.getState()
-		if state.TotalAccepted != state.TotalNeeded {
-			m.sendState(state)
-		}
+		state.Cancelled = true
+		m.sendState(state)
 	})
 
 	return m
@@ -63,7 +62,9 @@ func (m *Match) Accept(userID uint64, ch chan MatchStatus) error {
 	m.Lock()
 	defer m.Unlock()
 
-	m.subscribers = append(m.subscribers, ch)
+	if m.cancelled {
+		return ErrMatchCancelled
+	}
 
 	var found bool
 	for k, v := range m.players {
@@ -73,6 +74,7 @@ func (m *Match) Accept(userID uint64, ch chan MatchStatus) error {
 				m.players[k] = MatchAccepted
 				break
 			} else if v == MatchDeclined {
+				//should not go here
 				return ErrUserAlreadyDeclined
 			} else if v == MatchAccepted {
 				return ErrUserAlreadyAccepted
@@ -82,6 +84,7 @@ func (m *Match) Accept(userID uint64, ch chan MatchStatus) error {
 	if !found {
 		return ErrUserNotInMatch
 	} else {
+		m.subscribers = append(m.subscribers, ch)
 		m.sendState(m.getState())
 		return nil
 	}
@@ -90,6 +93,10 @@ func (m *Match) Accept(userID uint64, ch chan MatchStatus) error {
 func (m *Match) Decline(userID uint64) error {
 	m.Lock()
 	defer m.Unlock()
+
+	if m.cancelled {
+		return ErrMatchCancelled
+	}
 
 	var found bool
 	for k, v := range m.players {
@@ -101,6 +108,7 @@ func (m *Match) Decline(userID uint64) error {
 			} else if v == MatchAccepted {
 				return ErrUserAlreadyAccepted
 			} else if v == MatchDeclined {
+				//should not go here
 				return ErrUserAlreadyDeclined
 			}
 		}
@@ -115,7 +123,7 @@ func (m *Match) Decline(userID uint64) error {
 
 func (m *Match) getState() MatchStatus {
 	accepted := 0
-	cancelled := m.cancelled
+	var cancelled bool
 
 	players := []uint64{}
 
@@ -138,7 +146,19 @@ func (m *Match) getState() MatchStatus {
 
 //sendState sends MatchStatus to all users in the match
 func (m *Match) sendState(state MatchStatus) {
+	if m.cancelled {
+		return
+	}
+
 	for _, v := range m.subscribers {
 		v <- state
+		if state.Cancelled {
+			close(v)
+		}
+	}
+
+	if state.Cancelled {
+		m.timeoutTimer.Stop()
+		m.cancelled = true
 	}
 }

@@ -142,6 +142,18 @@ func TestQueueMarkMatchFoundDoesNotExist(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
+func TestQueueMarkMatchFoundNoChange(t *testing.T) {
+	q := NewQueue(100)
+	q.Enqueue(1, 1000)
+	ch := make(chan PubSubMessage, 1)
+	q.Subscribe(ch)
+
+	assert.NoError(t, q.MarkMatchFound(1, true))
+	<-ch
+	assert.NoError(t, q.MarkMatchFound(1, true))
+	assert.Empty(t, ch)
+}
+
 func TestQueueMarkMatchFound(t *testing.T) {
 	q := NewQueue(100)
 	q.Enqueue(1, 1000)
@@ -167,11 +179,24 @@ func TestQueueMarkMatchNotFoundDoesNotExist(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
+func TestQueueMarkMatchNotFoundNoChange(t *testing.T) {
+	q := NewQueue(100)
+	q.Enqueue(1, 1000)
+	ch := make(chan PubSubMessage, 1)
+	q.Subscribe(ch)
+
+	assert.NoError(t, q.MarkMatchFound(1, false))
+	assert.Empty(t, ch)
+}
+
 func TestQueueMarkMatchNotFound(t *testing.T) {
 	q := NewQueue(100)
 	q.Enqueue(1, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
+
+	assert.NoError(t, q.MarkMatchFound(1, true))
+	<-ch
 
 	assert.NoError(t, q.MarkMatchFound(1, false))
 	msg := <-ch

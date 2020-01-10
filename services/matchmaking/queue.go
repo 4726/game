@@ -144,6 +144,10 @@ func (q *Queue) MarkMatchFound(userID uint64, found bool) error {
 	for i, v := range q.data {
 		if userID == v.UserID {
 			exists = true
+			if oldFound := v.MatchFound; oldFound == found {
+				//already set to found, don't need to send pubsub message
+				return nil
+			}
 			q.data[i] = QueueData{v.UserID, v.Rating, v.StartTime, found, 0}
 			qd = q.data[i]
 			break

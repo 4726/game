@@ -27,7 +27,7 @@ func TestMatchAcceptUserAlreadyDeclined(t *testing.T) {
 	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20)
 	ch := make(chan MatchStatus, 1)
 	m.Decline(1)
-	assert.Equal(t, ErrUserAlreadyDeclined, m.Accept(1, ch))
+	assert.Equal(t, ErrMatchCancelled, m.Accept(1, ch))
 	assert.Empty(t, ch)
 }
 
@@ -37,10 +37,7 @@ func TestMatchAcceptTimeoutBefore(t *testing.T) {
 	time.Sleep(time.Second * 3)
 
 	ch := make(chan MatchStatus, 1)
-	assert.NoError(t, m.Accept(1, ch))
-	status := <-ch
-	expectedStatus := MatchStatus{1, 10, true, players}
-	assertMatchStatusEqual(t, expectedStatus, status)
+	assert.Equal(t, ErrMatchCancelled, m.Accept(1, ch))
 	assert.Empty(t, ch)
 }
 
@@ -99,7 +96,14 @@ func TestMatchDeclineUserAlreadyAccepted(t *testing.T) {
 func TestMatchDeclineUserAlreadyDeclined(t *testing.T) {
 	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20)
 	m.Decline(1)
-	assert.Equal(t, ErrUserAlreadyDeclined, m.Decline(1))
+	assert.Equal(t, ErrMatchCancelled, m.Decline(1))
+}
+
+func TestMatchDeclineTimeoutBefore(t *testing.T) {
+	players := []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	m := NewMatch(players, time.Second*2)
+	time.Sleep(time.Second * 3)
+	assert.Equal(t, ErrMatchCancelled, m.Decline(1))
 }
 
 func TestMatchDecline(t *testing.T) {
@@ -108,11 +112,7 @@ func TestMatchDecline(t *testing.T) {
 	assert.NoError(t, m.Decline(1))
 
 	ch := make(chan MatchStatus, 1)
-	assert.NoError(t, m.Accept(2, ch))
-
-	status := <-ch
-	expectedStatus := MatchStatus{1, 10, true, players}
-	assertMatchStatusEqual(t, expectedStatus, status)
+	assert.Error(t, ErrMatchCancelled, m.Accept(2, ch))
 	assert.Empty(t, ch)
 }
 
