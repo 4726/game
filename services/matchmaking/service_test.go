@@ -45,9 +45,8 @@ func TestServiceJoinAlreadyInQueue(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 	in := &pb.JoinQueueRequest{
-		UserId:    1,
-		QueueType: pb.QueueType_UNRANKED,
-		Rating:    1000,
+		UserId: 1,
+		Rating: 1000,
 	}
 	outStream, err := te.c.Join(context.Background(), in)
 	assert.NoError(t, err)
@@ -65,9 +64,8 @@ func TestServiceJoinMatchFound(t *testing.T) {
 	defer te.teardown()
 	for i := 1; i < 10; i++ {
 		in := &pb.JoinQueueRequest{
-			UserId:    uint64(i),
-			QueueType: pb.QueueType_UNRANKED,
-			Rating:    1000,
+			UserId: uint64(i),
+			Rating: 1000,
 		}
 		_, err := te.c.Join(context.Background(), in)
 		assert.NoError(t, err)
@@ -75,9 +73,8 @@ func TestServiceJoinMatchFound(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	in := &pb.JoinQueueRequest{
-		UserId:    10,
-		QueueType: pb.QueueType_UNRANKED,
-		Rating:    1000,
+		UserId: 10,
+		Rating: 1000,
 	}
 	outStream, err := te.c.Join(context.Background(), in)
 	assert.NoError(t, err)
@@ -87,14 +84,12 @@ func TestServiceJoinMatchFound(t *testing.T) {
 	assert.NoError(t, err)
 	expectedResp := &pb.JoinQueueResponse{
 		UserId:          in.GetUserId(),
-		QueueType:       in.GetQueueType(),
 		MatchId:         uint64(1),
 		Found:           true,
 		SecondsToAccept: 20,
 	}
 	expectedResp2 := &pb.JoinQueueResponse{
 		UserId:          in.GetUserId(),
-		QueueType:       in.GetQueueType(),
 		MatchId:         uint64(0),
 		Found:           false,
 		SecondsToAccept: 20,
@@ -107,18 +102,16 @@ func TestServiceJoinMatchFoundLater(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 	in := &pb.JoinQueueRequest{
-		UserId:    10,
-		QueueType: pb.QueueType_UNRANKED,
-		Rating:    1000,
+		UserId: 10,
+		Rating: 1000,
 	}
 	outStream, err := te.c.Join(context.Background(), in)
 	assert.NoError(t, err)
 
 	for i := 1; i < 10; i++ {
 		in := &pb.JoinQueueRequest{
-			UserId:    uint64(i),
-			QueueType: pb.QueueType_UNRANKED,
-			Rating:    1000,
+			UserId: uint64(i),
+			Rating: 1000,
 		}
 		_, err := te.c.Join(context.Background(), in)
 		assert.NoError(t, err)
@@ -130,14 +123,12 @@ func TestServiceJoinMatchFoundLater(t *testing.T) {
 	assert.NoError(t, err)
 	expectedResp := &pb.JoinQueueResponse{
 		UserId:          in.GetUserId(),
-		QueueType:       in.GetQueueType(),
 		MatchId:         uint64(1),
 		Found:           true,
 		SecondsToAccept: 20,
 	}
 	expectedResp2 := &pb.JoinQueueResponse{
 		UserId:          in.GetUserId(),
-		QueueType:       in.GetQueueType(),
 		MatchId:         uint64(0),
 		Found:           false,
 		SecondsToAccept: 20,
@@ -146,55 +137,12 @@ func TestServiceJoinMatchFoundLater(t *testing.T) {
 	assertEmptyRecv(t, outStream)
 }
 
-func TestServiceJoinMultipleQueues(t *testing.T) {
-	te := newTest(t)
-	defer te.teardown()
-	in := &pb.JoinQueueRequest{
-		UserId:    1,
-		QueueType: pb.QueueType_UNRANKED,
-		Rating:    1000,
-	}
-	outStream, err := te.c.Join(context.Background(), in)
-	assert.NoError(t, err)
-	resp, err := outStream.Recv()
-	assert.NoError(t, err)
-	expectedResp := &pb.JoinQueueResponse{
-		UserId:          in.GetUserId(),
-		QueueType:       in.GetQueueType(),
-		MatchId:         uint64(0),
-		Found:           false,
-		SecondsToAccept: 20,
-	}
-	assert.Equal(t, expectedResp, resp)
-	assertEmptyRecv(t, outStream)
-
-	in2 := &pb.JoinQueueRequest{
-		UserId:    1,
-		QueueType: pb.QueueType_RANKED,
-		Rating:    1000,
-	}
-	outStream2, err := te.c.Join(context.Background(), in2)
-	assert.NoError(t, err)
-	resp2, err := outStream2.Recv()
-	assert.NoError(t, err)
-	expectedResp2 := &pb.JoinQueueResponse{
-		UserId:          in2.GetUserId(),
-		QueueType:       in2.GetQueueType(),
-		MatchId:         uint64(0),
-		Found:           false,
-		SecondsToAccept: 20,
-	}
-	assert.Equal(t, expectedResp2, resp2)
-	assertEmptyRecv(t, outStream2)
-}
-
 func TestServiceJoin(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 	in := &pb.JoinQueueRequest{
-		UserId:    1,
-		QueueType: pb.QueueType_UNRANKED,
-		Rating:    1000,
+		UserId: 1,
+		Rating: 1000,
 	}
 	outStream, err := te.c.Join(context.Background(), in)
 	assert.NoError(t, err)
@@ -202,7 +150,6 @@ func TestServiceJoin(t *testing.T) {
 	assert.NoError(t, err)
 	expectedResp := &pb.JoinQueueResponse{
 		UserId:          in.GetUserId(),
-		QueueType:       in.GetQueueType(),
 		MatchId:         uint64(0),
 		Found:           false,
 		SecondsToAccept: 20,
@@ -215,14 +162,12 @@ func TestServiceLeaveNotInQueue(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 	in := &pb.LeaveQueueRequest{
-		UserId:    1,
-		QueueType: pb.QueueType_UNRANKED,
+		UserId: 1,
 	}
 	resp, err := te.c.Leave(context.Background(), in)
 	assert.NoError(t, err)
 	expectedResp := &pb.LeaveQueueResponse{
-		UserId:    in.GetUserId(),
-		QueueType: in.GetQueueType(),
+		UserId: in.GetUserId(),
 	}
 	assert.Equal(t, expectedResp, resp)
 }
@@ -231,21 +176,18 @@ func TestServiceLeave(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 	joinIn := &pb.JoinQueueRequest{
-		UserId:    1,
-		QueueType: pb.QueueType_UNRANKED,
-		Rating:    1000,
+		UserId: 1,
+		Rating: 1000,
 	}
 	te.c.Join(context.Background(), joinIn)
 
 	in := &pb.LeaveQueueRequest{
-		UserId:    1,
-		QueueType: pb.QueueType_UNRANKED,
+		UserId: 1,
 	}
 	resp, err := te.c.Leave(context.Background(), in)
 	assert.NoError(t, err)
 	expectedResp := &pb.LeaveQueueResponse{
-		UserId:    in.GetUserId(),
-		QueueType: in.GetQueueType(),
+		UserId: in.GetUserId(),
 	}
 	assert.Equal(t, expectedResp, resp)
 }
@@ -255,9 +197,8 @@ func TestServiceAcceptMatchDoesNotExist(t *testing.T) {
 	defer te.teardown()
 
 	in := &pb.AcceptQueueRequest{
-		UserId:    1,
-		QueueType: pb.QueueType_UNRANKED,
-		MatchId:   1,
+		UserId:  1,
+		MatchId: 1,
 	}
 	outStream, err := te.c.Accept(context.Background(), in)
 	assert.NoError(t, err)
@@ -272,9 +213,8 @@ func TestServiceAcceptNotInMatch(t *testing.T) {
 
 	for i := 1; i < 11; i++ {
 		in := &pb.JoinQueueRequest{
-			UserId:    uint64(i),
-			QueueType: pb.QueueType_UNRANKED,
-			Rating:    1000,
+			UserId: uint64(i),
+			Rating: 1000,
 		}
 		_, err := te.c.Join(context.Background(), in)
 		assert.NoError(t, err)
@@ -282,9 +222,8 @@ func TestServiceAcceptNotInMatch(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	in := &pb.AcceptQueueRequest{
-		UserId:    11,
-		QueueType: pb.QueueType_UNRANKED,
-		MatchId:   1,
+		UserId:  11,
+		MatchId: 1,
 	}
 	outStream, err := te.c.Accept(context.Background(), in)
 	assert.NoError(t, err)
@@ -298,9 +237,8 @@ func TestServiceAcceptAllAccepted(t *testing.T) {
 	defer te.teardown()
 	for i := 1; i < 11; i++ {
 		in := &pb.JoinQueueRequest{
-			UserId:    uint64(i),
-			QueueType: pb.QueueType_UNRANKED,
-			Rating:    1000,
+			UserId: uint64(i),
+			Rating: 1000,
 		}
 		_, err := te.c.Join(context.Background(), in)
 		assert.NoError(t, err)
@@ -308,9 +246,8 @@ func TestServiceAcceptAllAccepted(t *testing.T) {
 	time.Sleep(time.Second * 2)
 	for i := 1; i < 10; i++ {
 		in := &pb.AcceptQueueRequest{
-			UserId:    uint64(i),
-			QueueType: pb.QueueType_UNRANKED,
-			MatchId:   1,
+			UserId:  uint64(i),
+			MatchId: 1,
 		}
 		_, err := te.c.Accept(context.Background(), in)
 		assert.NoError(t, err)
@@ -318,9 +255,8 @@ func TestServiceAcceptAllAccepted(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	in := &pb.AcceptQueueRequest{
-		UserId:    10,
-		QueueType: pb.QueueType_UNRANKED,
-		MatchId:   1,
+		UserId:  10,
+		MatchId: 1,
 	}
 	outStream, err := te.c.Accept(context.Background(), in)
 	assert.NoError(t, err)
@@ -329,7 +265,6 @@ func TestServiceAcceptAllAccepted(t *testing.T) {
 	expectedResp := &pb.AcceptQueueResponse{
 		TotalAccepted: 10,
 		TotalNeeded:   10,
-		QueueType:     in.GetQueueType(),
 		Cancelled:     false,
 		UserIds:       []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
 	}
@@ -344,9 +279,8 @@ func TestServiceAcceptAllAcceptedLater(t *testing.T) {
 	defer te.teardown()
 	for i := 1; i < 11; i++ {
 		in := &pb.JoinQueueRequest{
-			UserId:    uint64(i),
-			QueueType: pb.QueueType_UNRANKED,
-			Rating:    1000,
+			UserId: uint64(i),
+			Rating: 1000,
 		}
 		outStream, err := te.c.Join(context.Background(), in)
 		assert.NoError(t, err)
@@ -355,9 +289,8 @@ func TestServiceAcceptAllAcceptedLater(t *testing.T) {
 	}
 
 	in := &pb.AcceptQueueRequest{
-		UserId:    10,
-		QueueType: pb.QueueType_UNRANKED,
-		MatchId:   1,
+		UserId:  10,
+		MatchId: 1,
 	}
 	outStream, err := te.c.Accept(context.Background(), in)
 	assert.NoError(t, err)
@@ -365,9 +298,8 @@ func TestServiceAcceptAllAcceptedLater(t *testing.T) {
 
 	for i := 1; i < 10; i++ {
 		in := &pb.AcceptQueueRequest{
-			UserId:    uint64(i),
-			QueueType: pb.QueueType_UNRANKED,
-			MatchId:   1,
+			UserId:  uint64(i),
+			MatchId: 1,
 		}
 		_, err := te.c.Accept(context.Background(), in)
 		assert.NoError(t, err)
@@ -380,7 +312,6 @@ func TestServiceAcceptAllAcceptedLater(t *testing.T) {
 		expectedResp := &pb.AcceptQueueResponse{
 			TotalAccepted: uint32(i),
 			TotalNeeded:   10,
-			QueueType:     in.GetQueueType(),
 			Cancelled:     false,
 			UserIds:       []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
 		}
@@ -402,9 +333,8 @@ func TestServiceAcceptOneDeniedBefore(t *testing.T) {
 
 	for i := 1; i < 11; i++ {
 		in := &pb.JoinQueueRequest{
-			UserId:    uint64(i),
-			QueueType: pb.QueueType_UNRANKED,
-			Rating:    1000,
+			UserId: uint64(i),
+			Rating: 1000,
 		}
 		_, err := te.c.Join(context.Background(), in)
 		assert.NoError(t, err)
@@ -412,17 +342,15 @@ func TestServiceAcceptOneDeniedBefore(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	deleteIn := &pb.DeclineQueueRequest{
-		UserId:    1,
-		QueueType: pb.QueueType_UNRANKED,
-		MatchId:   1,
+		UserId:  1,
+		MatchId: 1,
 	}
 	_, err := te.c.Decline(context.Background(), deleteIn)
 	assert.NoError(t, err)
 
 	in := &pb.AcceptQueueRequest{
-		UserId:    10,
-		QueueType: pb.QueueType_UNRANKED,
-		MatchId:   1,
+		UserId:  10,
+		MatchId: 1,
 	}
 	outStream, err := te.c.Accept(context.Background(), in)
 	assert.NoError(t, err)
@@ -437,9 +365,8 @@ func TestServiceAcceptOneDeniedAfter(t *testing.T) {
 
 	for i := 1; i < 11; i++ {
 		in := &pb.JoinQueueRequest{
-			UserId:    uint64(i),
-			QueueType: pb.QueueType_UNRANKED,
-			Rating:    1000,
+			UserId: uint64(i),
+			Rating: 1000,
 		}
 		_, err := te.c.Join(context.Background(), in)
 		assert.NoError(t, err)
@@ -447,9 +374,8 @@ func TestServiceAcceptOneDeniedAfter(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	in := &pb.AcceptQueueRequest{
-		UserId:    10,
-		QueueType: pb.QueueType_UNRANKED,
-		MatchId:   1,
+		UserId:  10,
+		MatchId: 1,
 	}
 	outStream, err := te.c.Accept(context.Background(), in)
 	assert.NoError(t, err)
@@ -457,9 +383,8 @@ func TestServiceAcceptOneDeniedAfter(t *testing.T) {
 	assert.NoError(t, err)
 
 	deleteIn := &pb.DeclineQueueRequest{
-		UserId:    1,
-		QueueType: pb.QueueType_UNRANKED,
-		MatchId:   1,
+		UserId:  1,
+		MatchId: 1,
 	}
 	_, err = te.c.Decline(context.Background(), deleteIn)
 	assert.NoError(t, err)
@@ -481,9 +406,8 @@ func TestServiceAcceptTimeout(t *testing.T) {
 
 	for i := 1; i < 11; i++ {
 		in := &pb.JoinQueueRequest{
-			UserId:    uint64(i),
-			QueueType: pb.QueueType_UNRANKED,
-			Rating:    1000,
+			UserId: uint64(i),
+			Rating: 1000,
 		}
 		outStream, err := te.c.Join(context.Background(), in)
 		assert.NoError(t, err)
@@ -493,9 +417,8 @@ func TestServiceAcceptTimeout(t *testing.T) {
 	time.Sleep(time.Second * 5)
 
 	in := &pb.AcceptQueueRequest{
-		UserId:    10,
-		QueueType: pb.QueueType_UNRANKED,
-		MatchId:   1,
+		UserId:  10,
+		MatchId: 1,
 	}
 	outStream, err := te.c.Accept(context.Background(), in)
 	assert.NoError(t, err)
@@ -508,9 +431,8 @@ func TestServiceDeclineMatchDoesNotExist(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 	in := &pb.DeclineQueueRequest{
-		UserId:    1,
-		QueueType: pb.QueueType_UNRANKED,
-		MatchId:   1,
+		UserId:  1,
+		MatchId: 1,
 	}
 	_, err := te.c.Decline(context.Background(), in)
 	expectedErr := status.Error(codes.FailedPrecondition, ErrUserNotInMatch.Error())
@@ -523,9 +445,8 @@ func TestServiceDeclineNotInMatch(t *testing.T) {
 
 	for i := 1; i < 11; i++ {
 		in := &pb.JoinQueueRequest{
-			UserId:    uint64(i),
-			QueueType: pb.QueueType_UNRANKED,
-			Rating:    1000,
+			UserId: uint64(i),
+			Rating: 1000,
 		}
 		_, err := te.c.Join(context.Background(), in)
 		assert.NoError(t, err)
@@ -533,9 +454,8 @@ func TestServiceDeclineNotInMatch(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	in := &pb.DeclineQueueRequest{
-		UserId:    11,
-		QueueType: pb.QueueType_UNRANKED,
-		MatchId:   1,
+		UserId:  11,
+		MatchId: 1,
 	}
 	_, err := te.c.Decline(context.Background(), in)
 	expectedErr := status.Error(codes.FailedPrecondition, ErrUserNotInMatch.Error())
@@ -548,9 +468,8 @@ func TestServiceDecline(t *testing.T) {
 
 	for i := 1; i < 11; i++ {
 		in := &pb.JoinQueueRequest{
-			UserId:    uint64(i),
-			QueueType: pb.QueueType_UNRANKED,
-			Rating:    1000,
+			UserId: uint64(i),
+			Rating: 1000,
 		}
 		_, err := te.c.Join(context.Background(), in)
 		assert.NoError(t, err)
@@ -558,14 +477,12 @@ func TestServiceDecline(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	in := &pb.DeclineQueueRequest{
-		UserId:    1,
-		QueueType: pb.QueueType_UNRANKED,
-		MatchId:   1,
+		UserId:  1,
+		MatchId: 1,
 	}
 	resp, err := te.c.Decline(context.Background(), in)
 	expectedResp := &pb.DeclineQueueResponse{
-		UserId:    in.GetUserId(),
-		QueueType: in.GetQueueType(),
+		UserId: in.GetUserId(),
 	}
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)

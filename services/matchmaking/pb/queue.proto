@@ -11,13 +11,11 @@ service Queue {
 
 message JoinQueueRequest {
     uint64 user_id = 1;
-    QueueType queue_type = 2;
     uint64 rating = 3;
 }
 
 message JoinQueueResponse {
     uint64 user_id = 1;
-    QueueType queue_type = 2;
     uint64 match_id = 3;
     bool found = 4;
     uint32 seconds_to_accept = 5;
@@ -25,51 +23,39 @@ message JoinQueueResponse {
 
 message LeaveQueueRequest {
     uint64 user_id = 1; 
-    QueueType queue_type = 2;
 }
 
 message LeaveQueueResponse {
     uint64 user_id = 1;
-    QueueType queue_type = 2;
 }
 
 message AcceptQueueRequest {
     uint64 user_id = 1;
-    QueueType queue_type = 2;
     uint64 match_id = 3;
 }
 
 message AcceptQueueResponse {
     uint32 total_accepted = 1;
     uint32 total_needed = 2;
-    QueueType queue_type = 3;
     bool cancelled = 4;
     repeated uint64 user_ids = 5;
 }
 
 message DeclineQueueRequest {
     uint64 user_id = 1;
-    QueueType queue_type = 2;
     uint64 match_id = 3;
 }
 
 message DeclineQueueResponse {
     uint64 user_id = 1;
-    QueueType queue_type = 2;
 }
 
 message QueueInfoRequest {
     uint64 user_id = 1;
-    QueueType queue_type = 2;
     uint64 rating = 3;
 }
 
 message QueueInfoResponse {
     uint32 seconds_estimated = 1;
     uint32 user_count = 2;
-}
-
-enum QueueType {
-    UNRANKED = 0;
-    RANKED = 1;
 }
