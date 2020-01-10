@@ -396,13 +396,17 @@ func TestServiceAcceptOneDeniedAfter(t *testing.T) {
 }
 
 func TestServiceAcceptTimeout(t *testing.T) {
+	oldDefaultMatchAcceptTimeout := defaultMatchAcceptTimeout
+	oldDefaultCheckTimeout := defaultCheckTimeout
+	defaultMatchAcceptTimeout = time.Second * 3
+	defaultCheckTimeout = time.Second
+	defer func() {
+		defaultMatchAcceptTimeout = oldDefaultMatchAcceptTimeout
+		defaultCheckTimeout = oldDefaultCheckTimeout
+	}()
+
 	te := newTest(t)
 	defer te.teardown()
-
-	defaultMatchAcceptTimeout = time.Second * 3
-	defer func() {
-		defaultMatchAcceptTimeout = time.Second * 20
-	}()
 
 	for i := 1; i < 11; i++ {
 		in := &pb.JoinQueueRequest{
@@ -423,7 +427,7 @@ func TestServiceAcceptTimeout(t *testing.T) {
 	outStream, err := te.c.Accept(context.Background(), in)
 	assert.NoError(t, err)
 	_, err = outStream.Recv()
-	expectedErr := status.Error(codes.FailedPrecondition, ErrMatchCancelled.Error())
+	expectedErr := status.Error(codes.FailedPrecondition, ErrUserNotInMatch.Error())
 	assert.Equal(t, expectedErr, err)
 }
 

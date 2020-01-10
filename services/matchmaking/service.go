@@ -11,10 +11,12 @@ import (
 )
 
 var defaultMatchAcceptTimeout = time.Second * 20
+var defaultCheckTimeout = time.Minute
 
 type QueueService struct {
 	queue       *Queue
 	matches     map[uint64]*Match
+	matchesLock sync.Mutex
 	queueTimes  *QueueTimes
 	opts        QueueServiceOptions
 	inQueue     map[uint64]QueueChannels
@@ -43,6 +45,20 @@ func NewQueueService(opts QueueServiceOptions) *QueueService {
 		opts:       opts,
 		inQueue:    map[uint64]QueueChannels{},
 	}
+
+	go func() {
+		for _ = range time.Tick(defaultCheckTimeout) {
+			qs.matchesLock.Lock()
+			for k, v := range qs.matches {
+				if v.TimeSince() < defaultMatchAcceptTimeout {
+					delete(qs.matches, k)
+				}
+			}
+			qs.matchesLock.Unlock()
+		}
+
+	}()
+
 	go qs.notifyQueueStateChanges()
 	return qs
 }
@@ -90,7 +106,7 @@ func (s *QueueService) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServ
 		for _, v := range users {
 			userIDs = append(userIDs, v.UserID)
 		}
-		s.matches[matchID] = NewMatch(userIDs, defaultMatchAcceptTimeout)
+		s.matches[matchID] = NewMatch(userIDs)
 	}
 
 	for {
@@ -132,7 +148,9 @@ func (s *QueueService) Leave(ctx context.Context, in *pb.LeaveQueueRequest) (*pb
 }
 
 func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_AcceptServer) error {
+	s.matchesLock.Lock()
 	match, ok := s.matches[in.GetMatchId()]
+	s.matchesLock.Unlock()
 	if !ok {
 		//happens when someone denied or match times out
 		s.queue.MarkMatchFound(in.GetUserId(), false)
@@ -147,7 +165,9 @@ func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Acce
 		}
 		if err == ErrMatchCancelled {
 			//happens when nobody gave match response and  match times out
+			s.matchesLock.Lock()
 			delete(s.matches, in.GetMatchId())
+			s.matchesLock.Unlock()
 			return status.Error(codes.FailedPrecondition, err.Error())
 		}
 		return status.Error(codes.Internal, err.Error())
@@ -174,7 +194,9 @@ func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Acce
 		if resp.Cancelled {
 			//someone declined or timeout
 			s.queue.MarkMatchFound(in.GetUserId(), false)
+			s.matchesLock.Lock()
 			delete(s.matches, in.GetMatchId())
+			s.matchesLock.Unlock()
 			return nil
 		}
 		if resp.GetTotalAccepted() == resp.GetTotalNeeded() {
@@ -188,7 +210,9 @@ func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Acce
 }
 
 func (s *QueueService) Decline(ctx context.Context, in *pb.DeclineQueueRequest) (*pb.DeclineQueueResponse, error) {
+	s.matchesLock.Lock()
 	match, ok := s.matches[in.GetMatchId()]
+	s.matchesLock.Unlock()
 	if !ok {
 		return nil, status.Error(codes.FailedPrecondition, ErrUserNotInMatch.Error())
 	}
@@ -200,7 +224,9 @@ func (s *QueueService) Decline(ctx context.Context, in *pb.DeclineQueueRequest) 
 	}
 
 	s.queue.DeleteOne(in.GetUserId())
+	s.matchesLock.Lock()
 	delete(s.matches, in.GetMatchId())
+	s.matchesLock.Unlock()
 
 	return &pb.DeclineQueueResponse{
 		UserId: in.GetUserId(),

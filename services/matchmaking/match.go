@@ -16,10 +16,10 @@ const (
 
 type Match struct {
 	sync.Mutex
-	players      map[uint64]MatchAcceptStatus
-	subscribers  []chan MatchStatus
-	cancelled    bool
-	timeoutTimer *time.Timer
+	players     map[uint64]MatchAcceptStatus
+	subscribers []chan MatchStatus
+	cancelled   bool
+	startTime   time.Time
 }
 
 type MatchStatus struct {
@@ -33,7 +33,7 @@ var ErrUserAlreadyAccepted = errors.New("user already accepted")
 var ErrUserAlreadyDeclined = errors.New("user already declined")
 var ErrMatchCancelled = errors.New("match is cancelled")
 
-func NewMatch(users []uint64, timeout time.Duration) *Match {
+func NewMatch(users []uint64) *Match {
 	players := map[uint64]MatchAcceptStatus{}
 	for _, v := range users {
 		players[v] = MatchUnknown
@@ -43,16 +43,8 @@ func NewMatch(users []uint64, timeout time.Duration) *Match {
 		players:     players,
 		subscribers: []chan MatchStatus{},
 		cancelled:   false,
+		startTime:   time.Now(),
 	}
-
-	m.timeoutTimer = time.AfterFunc(timeout, func() {
-		m.Lock()
-		defer m.Unlock()
-
-		state := m.getState()
-		state.Cancelled = true
-		m.sendState(state)
-	})
 
 	return m
 }
@@ -121,6 +113,10 @@ func (m *Match) Decline(userID uint64) error {
 	}
 }
 
+func (m *Match) TimeSince() time.Duration {
+	return time.Since(m.startTime)
+}
+
 func (m *Match) getState() MatchStatus {
 	accepted := 0
 	var cancelled bool
@@ -158,7 +154,6 @@ func (m *Match) sendState(state MatchStatus) {
 	}
 
 	if state.Cancelled {
-		m.timeoutTimer.Stop()
 		m.cancelled = true
 	}
 }

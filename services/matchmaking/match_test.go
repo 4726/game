@@ -2,20 +2,19 @@ package main
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMatchAcceptUserDoesNotExist(t *testing.T) {
-	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20)
+	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 	ch := make(chan MatchStatus, 1)
 	assert.Equal(t, ErrUserNotInMatch, m.Accept(11, ch))
 	assert.Empty(t, ch)
 }
 
 func TestMatchAcceptUserAlreadyAccepted(t *testing.T) {
-	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20)
+	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 	ch := make(chan MatchStatus, 1)
 	m.Accept(1, ch)
 	<-ch
@@ -24,40 +23,16 @@ func TestMatchAcceptUserAlreadyAccepted(t *testing.T) {
 }
 
 func TestMatchAcceptUserAlreadyDeclined(t *testing.T) {
-	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20)
+	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 	ch := make(chan MatchStatus, 1)
 	m.Decline(1)
 	assert.Equal(t, ErrMatchCancelled, m.Accept(1, ch))
 	assert.Empty(t, ch)
 }
 
-func TestMatchAcceptTimeoutBefore(t *testing.T) {
-	players := []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	m := NewMatch(players, time.Second*2)
-	time.Sleep(time.Second * 3)
-
-	ch := make(chan MatchStatus, 1)
-	assert.Equal(t, ErrMatchCancelled, m.Accept(1, ch))
-	assert.Empty(t, ch)
-}
-
-func TestMatchAcceptTimeoutAfter(t *testing.T) {
-	players := []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	m := NewMatch(players, time.Second*2)
-	ch := make(chan MatchStatus, 1)
-	assert.NoError(t, m.Accept(1, ch))
-	<-ch
-	time.Sleep(time.Second * 3)
-
-	status := <-ch
-	expectedStatus := MatchStatus{1, 10, true, players}
-	assertMatchStatusEqual(t, expectedStatus, status)
-	assert.Empty(t, ch)
-}
-
 func TestMatchAccept(t *testing.T) {
 	players := []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	m := NewMatch(players, time.Second*20)
+	m := NewMatch(players)
 	ch := make(chan MatchStatus, 1)
 	assert.NoError(t, m.Accept(1, ch))
 
@@ -80,12 +55,12 @@ func TestMatchAccept(t *testing.T) {
 }
 
 func TestMatchDeclineUserDoesNotExist(t *testing.T) {
-	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20)
+	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 	assert.Equal(t, ErrUserNotInMatch, m.Decline(11))
 }
 
 func TestMatchDeclineUserAlreadyAccepted(t *testing.T) {
-	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20)
+	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 	ch := make(chan MatchStatus, 1)
 	m.Accept(1, ch)
 	<-ch
@@ -94,21 +69,14 @@ func TestMatchDeclineUserAlreadyAccepted(t *testing.T) {
 }
 
 func TestMatchDeclineUserAlreadyDeclined(t *testing.T) {
-	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20)
+	m := NewMatch([]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 	m.Decline(1)
-	assert.Equal(t, ErrMatchCancelled, m.Decline(1))
-}
-
-func TestMatchDeclineTimeoutBefore(t *testing.T) {
-	players := []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	m := NewMatch(players, time.Second*2)
-	time.Sleep(time.Second * 3)
 	assert.Equal(t, ErrMatchCancelled, m.Decline(1))
 }
 
 func TestMatchDecline(t *testing.T) {
 	players := []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	m := NewMatch(players, time.Second*20)
+	m := NewMatch(players)
 	assert.NoError(t, m.Decline(1))
 
 	ch := make(chan MatchStatus, 1)
