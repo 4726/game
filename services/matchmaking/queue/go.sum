@@ -1,4 +1,6 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
+github.com/4726/game/services/matchmaking v0.0.0-20200110235743-dac082b19c68 h1:fHom6M+E1mD/2MEIKpvATsgnYm49e+H/w0zBG/rsf/Y=
+github.com/4726/game/services/matchmaking v0.0.0-20200110235743-dac082b19c68/go.mod h1:B4Ps2QyrlSyLIgd7SD9HbZeMEIKpsaGxs09lEmMA5ao=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
