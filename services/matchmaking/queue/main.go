@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/4726/game/services/matchmaking/pb"
+	"github.com/4726/game/services/matchmaking/queue/pb"
 	"google.golang.org/grpc"
 )
 

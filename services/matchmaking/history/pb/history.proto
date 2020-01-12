@@ -1,0 +1,39 @@
+syntax = "proto3";
+package pb;
+
+import "google/protobuf/timestamp.proto";
+
+service History {
+    rpc Get(GetHistoryRequest) returns (GetHistoryResponse);
+    rpc GetUser(GetUserHistoryRequest) returns (GetUserHistoryResponse);
+}
+
+message GetHistoryRequest {
+    uint32 total = 1;
+}
+
+message GetHistoryResponse {
+    repeated MatchHistoryInfo match = 1;
+}
+
+message GetUserHistoryRequest {
+    uint64 user_id = 1;
+    uint32 total = 2;
+}
+
+message GetUserHistoryResponse {
+    uint64 user_id = 1;
+    repeated MatchHistoryInfo match = 2;
+}
+
+message MatchHistoryInfo {
+    uint64 id = 1;
+    TeamHistoryInfo Winner = 2;
+    TeamHistoryInfo Loser = 3;
+    google.protobuf.Timestamp time = 4;
+}
+
+message TeamHistoryInfo {
+    repeated uint64 users = 1;
+    uint32 score = 2;
+}
