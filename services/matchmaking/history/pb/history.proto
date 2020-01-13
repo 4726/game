@@ -30,7 +30,8 @@ message MatchHistoryInfo {
     uint64 id = 1;
     TeamHistoryInfo Winner = 2;
     TeamHistoryInfo Loser = 3;
-    google.protobuf.Timestamp time = 4;
+    google.protobuf.Timestamp end_time = 4;
+    uint64 total_seconds = 5;
 }
 
 message TeamHistoryInfo {

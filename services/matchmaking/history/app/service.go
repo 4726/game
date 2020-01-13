@@ -96,8 +96,7 @@ func (s *Service) GetUser(ctx context.Context, in *pb.GetUserHistoryRequest) (*p
 	filter := bson.D{{"$or", bson.D{
 		{"winner.users", in.GetUserId()},
 		{"loser.users", in.GetUserId()},
-	},
-	},
+	}},
 	}
 	cur, err := collection.Find(context.Background(), filter, findOptions)
 	if err != nil {

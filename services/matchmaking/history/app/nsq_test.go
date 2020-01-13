@@ -65,10 +65,11 @@ func matchHistoryInfoTestData() []*pb.MatchHistoryInfo {
 		Score: 10,
 	}
 	m1 := &pb.MatchHistoryInfo{
-		Id:     1,
-		Winner: winner,
-		Loser:  loser,
-		Time:   ptypes.TimestampNow(),
+		Id:           1,
+		Winner:       winner,
+		Loser:        loser,
+		EndTime:      ptypes.TimestampNow(),
+		TotalSeconds: 3600,
 	}
 
 	return []*pb.MatchHistoryInfo{m1}
