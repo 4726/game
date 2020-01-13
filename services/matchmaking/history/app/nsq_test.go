@@ -17,7 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func TestHandleMessage(t *testing.T) {
+func TestNSQHandleMessage(t *testing.T) {
 	opts := options.Client().ApplyURI("mongodb://localhost:27017")
 	db, err := mongo.Connect(context.Background(), opts)
 	assert.NoError(t, err)
@@ -72,5 +72,37 @@ func matchHistoryInfoTestData() []*pb.MatchHistoryInfo {
 		TotalSeconds: 3600,
 	}
 
-	return []*pb.MatchHistoryInfo{m1}
+	winner = &pb.TeamHistoryInfo{
+		Users: []uint64{10, 2, 3, 4, 5},
+		Score: 16,
+	}
+	loser = &pb.TeamHistoryInfo{
+		Users: []uint64{6, 7, 8, 9, 1},
+		Score: 14,
+	}
+	m2 := &pb.MatchHistoryInfo{
+		Id:           2,
+		Winner:       winner,
+		Loser:        loser,
+		EndTime:      ptypes.TimestampNow(),
+		TotalSeconds: 3600,
+	}
+
+	winner = &pb.TeamHistoryInfo{
+		Users: []uint64{11, 12, 13, 14, 15},
+		Score: 20,
+	}
+	loser = &pb.TeamHistoryInfo{
+		Users: []uint64{16, 17, 18, 19, 20},
+		Score: 10,
+	}
+	m3 := &pb.MatchHistoryInfo{
+		Id:           3,
+		Winner:       winner,
+		Loser:        loser,
+		EndTime:      ptypes.TimestampNow(),
+		TotalSeconds: 3600,
+	}
+
+	return []*pb.MatchHistoryInfo{m1, m2, m3}
 }

@@ -20,16 +20,16 @@ type Service struct {
 }
 
 type Config struct {
-	DB   DBConfig
-	NSQD NSQDConfig
+	DB  DBConfig
+	NSQ NSQConfig
 }
 
 type DBConfig struct {
 	Name, Collection string
 }
 
-type NSQDConfig struct {
-	Addr string
+type NSQConfig struct {
+	Addr, Topic, Channel string
 }
 
 const maxMatchResponses = 100
@@ -48,12 +48,12 @@ func NewService(c Config) (*Service, error) {
 		return nil, err
 	}
 
-	consumer, err := nsq.NewConsumer("matches", "db", nsq.NewConfig())
+	consumer, err := nsq.NewConsumer(c.NSQ.Topic, c.NSQ.Channel, nsq.NewConfig())
 	if err != nil {
 		return nil, err
 	}
 	consumer.AddHandler(&nsqMessageHandler{db, c.DB.Name, c.DB.Collection})
-	if err := consumer.ConnectToNSQD(c.NSQD.Addr); err != nil {
+	if err := consumer.ConnectToNSQD(c.NSQ.Addr); err != nil {
 		return nil, err
 	}
 
@@ -67,14 +67,14 @@ func (s *Service) Get(ctx context.Context, in *pb.GetHistoryRequest) (*pb.GetHis
 	matches := []*pb.MatchHistoryInfo{}
 	collection := s.db.Database(s.cfg.DB.Name).Collection(s.cfg.DB.Collection)
 	findOptions := options.Find()
-	findOptions.SetSort(bson.M{"time": "-1"})
+	findOptions.SetSort(bson.M{"end_time": -1})
 	findOptions.SetLimit(int64(in.GetTotal()))
 	cur, err := collection.Find(context.Background(), bson.D{{}}, findOptions)
 	if err != nil {
 		return nil, err
 	}
 	defer cur.Close(context.Background())
-	if err := cur.All(context.Background(), matches); err != nil {
+	if err := cur.All(context.Background(), &matches); err != nil {
 		return nil, err
 	}
 
@@ -91,19 +91,20 @@ func (s *Service) GetUser(ctx context.Context, in *pb.GetUserHistoryRequest) (*p
 	matches := []*pb.MatchHistoryInfo{}
 	collection := s.db.Database(s.cfg.DB.Name).Collection(s.cfg.DB.Collection)
 	findOptions := options.Find()
-	findOptions.SetSort(bson.M{"time": "-1"})
+	findOptions.SetSort(bson.M{"end_time": -1})
 	findOptions.SetLimit(int64(in.GetTotal()))
-	filter := bson.D{{"$or", bson.D{
-		{"winner.users", in.GetUserId()},
-		{"loser.users", in.GetUserId()},
-	}},
+	//mongo shell version: {$or: [{"winner.users": 1}, {"loser.users": 1}]}
+	filter := bson.M{"$or": bson.A{
+		bson.M{"winner.users": in.GetUserId()},
+		bson.M{"loser.users": in.GetUserId()},
+	},
 	}
 	cur, err := collection.Find(context.Background(), filter, findOptions)
 	if err != nil {
 		return nil, err
 	}
 	defer cur.Close(context.Background())
-	if err := cur.All(context.Background(), matches); err != nil {
+	if err := cur.All(context.Background(), &matches); err != nil {
 		return nil, err
 	}
 
