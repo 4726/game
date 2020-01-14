@@ -5,12 +5,10 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/4726/game/services/matchmaking/history/app"
 	"github.com/4726/game/services/matchmaking/history/pb"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 )
 
@@ -48,24 +46,4 @@ func main() {
 		log.Fatal(sig.String())
 		server.GracefulStop()
 	}
-}
-
-func LoadConfig(filePath string) (app.Config, error) {
-	viper.SetConfigName("config")
-	viper.AddConfigPath(".")
-	viper.ReadInConfig()
-
-	viper.SetEnvPrefix("history")
-	for _, v := range os.Environ() {
-		tokens := strings.Split(v, "=")
-		if !strings.HasPrefix(tokens[0], "HISTORY") {
-			continue
-		}
-		key := strings.TrimPrefix(tokens[0], "HISTORY_")
-		viper.BindEnv(key)
-	}
-
-	var cfg app.Config
-	err := viper.Unmarshal(&cfg)
-	return cfg, err
 }

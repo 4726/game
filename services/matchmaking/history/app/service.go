@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/4726/game/services/matchmaking/history/config"
 	"github.com/4726/game/services/matchmaking/history/pb"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/nsqio/go-nsq"
@@ -16,20 +17,7 @@ import (
 type Service struct {
 	consumer *nsq.Consumer
 	db       *mongo.Client
-	cfg      Config
-}
-
-type Config struct {
-	DB  DBConfig
-	NSQ NSQConfig
-}
-
-type DBConfig struct {
-	Name, Collection string
-}
-
-type NSQConfig struct {
-	Addr, Topic, Channel string
+	cfg      config.Config
 }
 
 const maxMatchResponses = 100
