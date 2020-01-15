@@ -3,10 +3,10 @@ package app
 import (
 	"bytes"
 	"context"
-	"net"
 	"testing"
 	"time"
 
+	"github.com/4726/game/services/matchmaking/history/config"
 	"github.com/4726/game/services/matchmaking/history/pb"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/nsqio/go-nsq"
@@ -15,35 +15,29 @@ import (
 )
 
 type test struct {
-	s       *grpc.Server
 	c       pb.HistoryClient
-	l       net.Listener
 	service *Service
 }
 
 func newTest(t testing.TB) *test {
-	cfg := Config{
-		DBConfig{"history_test", "collection_test"},
-		NSQConfig{"127.0.0.1:4150", "matches_test", "db_test"},
+	cfg := config.Config{
+		config.DBConfig{"history_test", "collection_test"},
+		config.NSQConfig{"127.0.0.1:4150", "matches_test", "db_test"},
+		100,
 	}
-	service, err := NewService(cfg)
-	assert.NoError(t, err)
+	service := NewService(cfg)
 
-	lis, err := net.Listen("tcp", "127.0.0.1:14000")
-	assert.NoError(t, err)
-	server := grpc.NewServer()
-	pb.RegisterHistoryServer(server, service)
-	go server.Serve(lis)
+	go service.Run()
 	time.Sleep(time.Second * 2)
 
 	conn, err := grpc.Dial("127.0.0.1:14000", grpc.WithInsecure())
 	assert.NoError(t, err)
 	c := pb.NewHistoryClient(conn)
 
-	collection := service.db.Database("history_test").Collection("collection_test")
+	collection := service.hs.db.Database("history_test").Collection("collection_test")
 	assert.NoError(t, collection.Drop(context.Background()))
 
-	return &test{server, c, lis, service}
+	return &test{c, service}
 }
 
 func (te *test) addData(t testing.TB) []*pb.MatchHistoryInfo {
@@ -63,8 +57,6 @@ func (te *test) addData(t testing.TB) []*pb.MatchHistoryInfo {
 }
 
 func (te *test) teardown() {
-	te.s.Stop()
-	te.l.Close()
 	te.service.Close()
 }
 

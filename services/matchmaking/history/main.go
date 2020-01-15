@@ -6,36 +6,36 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"flag"
 
 	"github.com/4726/game/services/matchmaking/history/app"
 	"github.com/4726/game/services/matchmaking/history/pb"
 	"google.golang.org/grpc"
+	"github.com/4726/game/services/matchmaking/history/config"
 )
 
+var configPath string
+
 func main() {
-	lis, err := net.Listen("tcp", ":14000")
+	flag.StringVar(&configPath, "config", "", "Path to config file")
+	flag.StringVar(&configPath, "c", "", "Path to config file")
+	flag.Parse()
+
+	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	cfg := app.Config{
-		app.DBConfig{"history", "collection"},
-		app.NSQConfig{"127.0.0.1:4150", "matches", "db"},
-	}
-
-	server := grpc.NewServer()
-	service, err := app.NewService(cfg)
-	if err != nil {
-		log.Fatal(err)
-	}
-	pb.RegisterHistoryServer(server, service)
+	service := app.NewService(cfg)
+	defer service.Close()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(c)
 
 	serveCh := make(chan error, 1)
 	go func() {
-		err := server.Serve(lis)
+		err := server.Run()
 		serveCh <- err
 	}()
 
@@ -44,6 +44,5 @@ func main() {
 		log.Fatal(err)
 	case sig := <-c:
 		log.Fatal(sig.String())
-		server.GracefulStop()
 	}
 }

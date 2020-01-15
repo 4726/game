@@ -13,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// nsqMessageHandler implements nsq.Handler
 type nsqMessageHandler struct {
 	db                   *mongo.Client
 	dbName, dbCollection string

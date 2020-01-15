@@ -11,8 +11,9 @@ import (
 )
 
 type Config struct {
-	DB  DBConfig
-	NSQ NSQConfig
+	DB                DBConfig
+	NSQ               NSQConfig
+	MaxMatchResponses uint32
 }
 
 type DBConfig struct {
@@ -22,6 +23,8 @@ type DBConfig struct {
 type NSQConfig struct {
 	Addr, Topic, Channel string
 }
+
+const defaultMaxMatchResponses = 100
 
 func LoadConfig(filePath string) (Config, error) {
 	if filePath != "" {
@@ -46,6 +49,7 @@ func LoadConfig(filePath string) (Config, error) {
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix("history")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.SetDefault("MaxMatchResponses", defaultMaxMatchResponses)
 	for _, v := range os.Environ() {
 		tokens := strings.Split(v, "=")
 		if !strings.HasPrefix(tokens[0], "HISTORY") {

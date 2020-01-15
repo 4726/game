@@ -1,0 +1,7 @@
+db:
+  name: history
+  collection: collection
+nsq:
+  addr: 127.0.0.1:4150
+  topic: matches
+  channel: db
