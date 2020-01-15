@@ -20,8 +20,6 @@ type historyServer struct {
 	cfg      config.Config
 }
 
-const maxMatchResponses = 100
-
 func newHistoryServer(c config.Config) (*historyServer, error) {
 	opts := options.Client().ApplyURI("mongodb://localhost:27017")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
