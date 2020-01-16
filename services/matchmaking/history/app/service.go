@@ -21,6 +21,7 @@ func NewService(cfg config.Config) *Service {
 	return &Service{cfg, nil, nil}
 }
 
+//Run runs the service and blocks until an error occurs
 func (s *Service) Run() error {
 	lis, err := net.Listen("tcp", ":14000")
 	if err != nil {
@@ -40,6 +41,7 @@ func (s *Service) Run() error {
 	return s.grpcServer.Serve(lis)
 }
 
+//Close gracefully stops the service
 func (s *Service) Close() {
 	if s.hs != nil {
 		s.hs.Close()

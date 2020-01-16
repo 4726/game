@@ -105,6 +105,7 @@ func (s *historyServer) GetUser(ctx context.Context, in *pb.GetUserHistoryReques
 	}, nil
 }
 
+//Close gracefully stops the server
 func (s *historyServer) Close() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()

@@ -6,3 +6,4 @@ nsq:
   topic: topic
   channel: channel
 max_match_responses: 100
+empty: null
