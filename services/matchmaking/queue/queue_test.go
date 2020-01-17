@@ -284,7 +284,7 @@ func TestQueueEnqueueAndFindMatchMatchFound(t *testing.T) {
 	msgs = append(msgs, <-ch)
 	msgs = append(msgs, <-ch)
 
-	expectedQD := QueueData{4, 1000, time.Now(), true, 1}
+	expectedQD := QueueData{4, 1000, time.Now(), false, 0}
 	expectedMsg := PubSubMessage{PubSubTopicAdd, expectedQD}
 	assertPubSubMessageContains(t, expectedMsg, msgs)
 

@@ -162,11 +162,15 @@ func (q *Queue) MarkMatchFound(userID uint64, found bool) error {
 	return nil
 }
 
-// EnqueueAndFindMatch enqueues user to the queue tries to find a match for user,
-// if successful, will return []QueueData of other users in the match,
+// EnqueuAndFindMatch first adds the user into the queue, then it tries to find a match for the user
 func (q *Queue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, total int) (found bool, matchID uint64, qds []QueueData, err error) {
 	q.Lock()
 	defer q.Unlock()
+
+	if len(q.data) >= q.limit {
+		err = ErrQueueFull
+		return
+	}
 
 	indexes := []int{}
 	for i, v := range q.data {
@@ -190,26 +194,24 @@ func (q *Queue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, total in
 		}
 	}
 
-	indexes = append(indexes, len(q.data))
+	qd := QueueData{userID, rating, time.Now(), false, 0}
+	q.data = append(q.data, qd)
+	q.publish(PubSubTopicAdd, qd)
+
+	indexes = append(indexes, len(q.data)-1)
 	if len(indexes) < total {
-		qd := QueueData{userID, rating, time.Now(), false, 0}
-		q.data = append(q.data, qd)
-		q.publish(PubSubTopicAdd, qd)
 		return
 	}
 
-	matchID = q.getMatchID()
-	qd := QueueData{userID, rating, time.Now(), true, matchID}
-	q.data = append(q.data, qd)
-	q.publish(PubSubTopicAdd, qd)
 	found = true
 	qds = []QueueData{}
+	matchID = q.getMatchID()
 	for _, v := range indexes[:total] {
 		qd := q.data[v]
 		updatedQD := QueueData{qd.UserID, qd.Rating, qd.StartTime, true, matchID}
 		q.data[v] = updatedQD
 		q.publish(PubSubTopicMatchFound, q.data[v])
-		qds = append(qds, q.data[v])
+		qds = append(qds, updatedQD)
 	}
 
 	return
