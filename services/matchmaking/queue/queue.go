@@ -18,7 +18,7 @@ const (
 )
 
 type QueueData struct {
-	UserID     uint64
+	UserID     uint64 `gorm:"PRIMARY_KEY;NOT NULL"`
 	Rating     uint64
 	StartTime  time.Time
 	MatchFound bool

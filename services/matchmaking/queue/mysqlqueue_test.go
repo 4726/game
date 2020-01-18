@@ -1,27 +1,23 @@
 package main
 
 import (
-	"context"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func newMongoQueueTest(t testing.TB) *MongoQueue {
-	q, err := NewMongoQueue(100)
+func newMysqlQueueTest(t testing.TB, limit int) *MysqlQueue {
+	q, err := NewMysqlQueue(limit)
 	assert.NoError(t, err)
-	collection := q.db.Database(q.dbName).Collection(q.dbCollection)
-	assert.NoError(t, collection.Drop(context.Background()))
+	q.db.Exec("TRUNCATE queue_data;")
 	return q
 }
 
-func TestMongoQueueEnqueueFull(t *testing.T) {
+func TestMysqlQueueEnqueueFull(t *testing.T) {}
 
-}
-
-func TestMongoQueueEnqueueAlreadyInQueue(t *testing.T) {
-	q := newMongoQueueTest(t)
+func TestMysqlQueueEnqueueAlreadyInQueue(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
@@ -30,9 +26,8 @@ func TestMongoQueueEnqueueAlreadyInQueue(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMongoQueueEnqueue(t *testing.T) {
-	q := newMongoQueueTest(t)
-
+func TestMysqlQueueEnqueue(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
 
@@ -45,23 +40,8 @@ func TestMongoQueueEnqueue(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMongoQueueDequeue(t *testing.T) {
-	q := newMongoQueueTest(t)
-	q.Enqueue(1, 1000)
-	ch := make(chan PubSubMessage, 1)
-	q.Subscribe(ch)
-
-	q.Dequeue()
-	msg := <-ch
-	expectedQD := QueueData{1, 1000, time.Now(), false, 0}
-	expectedMsg := PubSubMessage{PubSubTopicDelete, expectedQD}
-	assertPubSubMessageEqual(t, expectedMsg, msg)
-
-	assert.Empty(t, ch)
-}
-
-func TestMongoQueueDeleteOneDoesNotExist(t *testing.T) {
-	q := newMongoQueueTest(t)
+func TestMysqlQueueDeleteOneDoesNotExist(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	q.Enqueue(2, 1000)
 	q.Enqueue(3, 1000)
@@ -71,8 +51,8 @@ func TestMongoQueueDeleteOneDoesNotExist(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMongoQueueDeleteOne(t *testing.T) {
-	q := newMongoQueueTest(t)
+func TestMysqlQueueDeleteOne(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
@@ -86,16 +66,16 @@ func TestMongoQueueDeleteOne(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMongoQueueLen(t *testing.T) {
-	q := newMongoQueueTest(t)
+func TestMysqlQueueLen(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	q.Enqueue(2, 1000)
 	q.Enqueue(3, 1000)
 	assert.Equal(t, 3, q.Len())
 }
 
-func TestMongoQueueMarkMatchFoundDoesNotExist(t *testing.T) {
-	q := newMongoQueueTest(t)
+func TestMysqlQueueMarkMatchFoundDoesNotExist(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	q.Enqueue(2, 1000)
 	q.Enqueue(3, 1000)
@@ -105,8 +85,8 @@ func TestMongoQueueMarkMatchFoundDoesNotExist(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMongoQueueMarkMatchFoundNoChange(t *testing.T) {
-	q := newMongoQueueTest(t)
+func TestMysqlQueueMarkMatchFoundNoChange(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
@@ -117,8 +97,8 @@ func TestMongoQueueMarkMatchFoundNoChange(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMongoQueueMarkMatchFound(t *testing.T) {
-	q := newMongoQueueTest(t)
+func TestMysqlQueueMarkMatchFound(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
@@ -131,8 +111,8 @@ func TestMongoQueueMarkMatchFound(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMongoQueueMarkMatchNotFoundDoesNotExist(t *testing.T) {
-	q := newMongoQueueTest(t)
+func TestMysqlQueueMarkMatchNotFoundDoesNotExist(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	q.Enqueue(2, 1000)
 	q.Enqueue(3, 1000)
@@ -142,8 +122,8 @@ func TestMongoQueueMarkMatchNotFoundDoesNotExist(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMongoQueueMarkMatchNotFoundNoChange(t *testing.T) {
-	q := newMongoQueueTest(t)
+func TestMysqlQueueMarkMatchNotFoundNoChange(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
@@ -152,8 +132,8 @@ func TestMongoQueueMarkMatchNotFoundNoChange(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMongoQueueMarkMatchNotFound(t *testing.T) {
-	q := newMongoQueueTest(t)
+func TestMysqlQueueMarkMatchNotFound(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
@@ -170,8 +150,8 @@ func TestMongoQueueMarkMatchNotFound(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMongoQueueEnqueueAndFindMatchAlreadyInQueue(t *testing.T) {
-	q := newMongoQueueTest(t)
+func TestMysqlQueueEnqueueAndFindMatchAlreadyInQueue(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	q.Enqueue(2, 1000)
 	q.Enqueue(3, 1000)
@@ -184,8 +164,8 @@ func TestMongoQueueEnqueueAndFindMatchAlreadyInQueue(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMongoQueueEnqueueAndFindMatchNotEnoughPlayers(t *testing.T) {
-	q := newMongoQueueTest(t)
+func TestMysqlQueueEnqueueAndFindMatchNotEnoughPlayers(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	q.Enqueue(2, 1000)
 	q.Enqueue(3, 1000)
@@ -204,8 +184,8 @@ func TestMongoQueueEnqueueAndFindMatchNotEnoughPlayers(t *testing.T) {
 }
 
 //tests if matchfound == true will not count as available for match
-func TestMongoQueueEnqueueAndFindMatchNotEnoughPlayers2(t *testing.T) {
-	q := newMongoQueueTest(t)
+func TestMysqlQueueEnqueueAndFindMatchNotEnoughPlayers2(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	q.Enqueue(2, 1000)
 	q.Enqueue(3, 1000)
@@ -226,8 +206,8 @@ func TestMongoQueueEnqueueAndFindMatchNotEnoughPlayers2(t *testing.T) {
 
 //have to use assertPubSubMessageContains() because channel messages
 //come in different orders
-func TestMongoQueueEnqueueAndFindMatchMatchFound(t *testing.T) {
-	q := newMongoQueueTest(t)
+func TestMysqlQueueEnqueueAndFindMatchMatchFound(t *testing.T) {
+	q := newMysqlQueueTest(t, 100)
 	q.Enqueue(1, 950)
 	q.Enqueue(2, 1050)
 	q.Enqueue(3, 1030)
