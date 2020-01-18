@@ -83,16 +83,14 @@ func (q *MysqlQueue) MarkMatchFound(userID uint64, found bool) error {
 	}
 
 	qd := QueueData{UserID: userID}
-	if err := q.db.Model(&qd).Update("matchfound", found).Error; err != nil {
-		return err
+	res := q.db.Model(&qd).Update("match_found", found)
+	if res.Error != nil {
+		return res.Error
 	}
-	t := time.Time{}
-	if qd.StartTime == t {
-		return ErrDoesNotExist
-	}
-	if qd.MatchFound == found {
-		//already set to found, don't set pubsubmessage
+	if res.RowsAffected < 1 {
+		//either does not exist or matchfound was already set to found
 		return nil
+
 	}
 
 	q.publish(pubSubTopic, qd)
@@ -130,13 +128,12 @@ func (q *MysqlQueue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, tot
 		return
 	}
 
-	qds = []QueueData{}
 	ratingLessThan := qd.Rating + ratingRange/2
 	ratingGreaterThan := qd.Rating - ratingRange/2
 
 	err = q.db.
 		Where("rating <= ? AND rating >= ? && match_found = ?", ratingLessThan, ratingGreaterThan, false).
-		Order("starttime asc").
+		Order("start_time asc").
 		Limit(total).
 		Find(&qds).Error
 	if err != nil {
@@ -144,9 +141,19 @@ func (q *MysqlQueue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, tot
 		return
 	}
 
-	if len(qds) < total {
-		tx.Commit()
-		return
+	var tempMatchID uint64
+	if len(qds) >= total {
+		tempMatchID = q.getMatchID()
+		for i, v := range qds {
+			err = q.db.Model(&v).Update("match_found", true).Error
+			if err != nil {
+				tx.Rollback()
+				return
+			}
+			v.MatchFound = true
+			v.MatchID = tempMatchID
+			qds[i] = v
+		}
 	}
 
 	if err = tx.Commit().Error; err != nil {
@@ -156,8 +163,13 @@ func (q *MysqlQueue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, tot
 
 	q.publish(PubSubTopicAdd, qd)
 
+	if len(qds) < total {
+		qds = []QueueData{}
+		return
+	}
+
 	found = true
-	matchID = q.getMatchID()
+	matchID = tempMatchID
 	for _, v := range qds {
 		q.publish(PubSubTopicMatchFound, v)
 	}

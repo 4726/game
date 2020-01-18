@@ -59,9 +59,8 @@ func TestMysqlQueueDeleteOne(t *testing.T) {
 
 	assert.NoError(t, q.DeleteOne(1))
 	msg := <-ch
-	expectedQD := QueueData{1, 1000, time.Now(), false, 0}
-	expectedMsg := PubSubMessage{PubSubTopicDelete, expectedQD}
-	assertPubSubMessageEqual(t, expectedMsg, msg)
+	assert.Equal(t, PubSubTopicDelete, msg.Topic)
+	assert.Equal(t, uint64(1), msg.Data.UserID)
 
 	assert.Empty(t, ch)
 }
@@ -81,7 +80,7 @@ func TestMysqlQueueMarkMatchFoundDoesNotExist(t *testing.T) {
 	q.Enqueue(3, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
-	assert.Equal(t, ErrDoesNotExist, q.MarkMatchFound(4, true))
+	assert.NoError(t, q.MarkMatchFound(4, true))
 	assert.Empty(t, ch)
 }
 
@@ -105,9 +104,8 @@ func TestMysqlQueueMarkMatchFound(t *testing.T) {
 
 	assert.NoError(t, q.MarkMatchFound(1, true))
 	msg := <-ch
-	expectedQD := QueueData{1, 1000, time.Now(), true, 0}
-	expectedMsg := PubSubMessage{PubSubTopicMatchFound, expectedQD}
-	assertPubSubMessageEqual(t, expectedMsg, msg)
+	assert.Equal(t, PubSubTopicMatchFound, msg.Topic)
+	assert.Equal(t, uint64(1), msg.Data.UserID)
 	assert.Empty(t, ch)
 }
 
@@ -118,7 +116,7 @@ func TestMysqlQueueMarkMatchNotFoundDoesNotExist(t *testing.T) {
 	q.Enqueue(3, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
-	assert.Equal(t, ErrDoesNotExist, q.MarkMatchFound(4, false))
+	assert.NoError(t, q.MarkMatchFound(4, false))
 	assert.Empty(t, ch)
 }
 
@@ -143,9 +141,8 @@ func TestMysqlQueueMarkMatchNotFound(t *testing.T) {
 
 	assert.NoError(t, q.MarkMatchFound(1, false))
 	msg := <-ch
-	expectedQD := QueueData{1, 1000, time.Now(), false, 0}
-	expectedMsg := PubSubMessage{PubSubTopicMatchNotFound, expectedQD}
-	assertPubSubMessageEqual(t, expectedMsg, msg)
+	assert.Equal(t, PubSubTopicMatchNotFound, msg.Topic)
+	assert.Equal(t, uint64(1), msg.Data.UserID)
 
 	assert.Empty(t, ch)
 }
