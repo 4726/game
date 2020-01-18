@@ -1,6 +1,7 @@
-package main
+package queue
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -9,7 +10,29 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-type MysqlQueue struct {
+type PubSubTopic int
+
+const (
+	PubSubTopicAdd PubSubTopic = iota
+	PubSubTopicDelete
+	PubSubTopicMatchFound
+	PubSubTopicMatchNotFound
+)
+
+type QueueData struct {
+	UserID     uint64 `gorm:"PRIMARY_KEY;NOT NULL"`
+	Rating     uint64
+	StartTime  time.Time
+	MatchFound bool
+	MatchID    uint64
+}
+
+type PubSubMessage struct {
+	Topic PubSubTopic
+	Data  QueueData
+}
+
+type Queue struct {
 	sync.Mutex
 	db          *gorm.DB
 	limit       int
@@ -17,7 +40,12 @@ type MysqlQueue struct {
 	matchID     uint64
 }
 
-func NewMysqlQueue(limit int) (*MysqlQueue, error) {
+var ErrAlreadyInQueue = errors.New("user already in queue")
+var ErrDoesNotExist = errors.New("does not exist")
+var ErrNotAllExists = errors.New("not all exists")
+var ErrQueueFull = errors.New("queue full")
+
+func New(limit int) (*Queue, error) {
 	s := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True", "root", "pass", "127.0.0.1:3306", "tempname")
 
 	db, err := gorm.Open("mysql", s)
@@ -27,7 +55,7 @@ func NewMysqlQueue(limit int) (*MysqlQueue, error) {
 
 	db.AutoMigrate(&QueueData{})
 
-	return &MysqlQueue{
+	return &Queue{
 		db:          db,
 		limit:       limit,
 		subscribers: []chan PubSubMessage{},
@@ -35,7 +63,7 @@ func NewMysqlQueue(limit int) (*MysqlQueue, error) {
 	}, err
 }
 
-func (q *MysqlQueue) Enqueue(userID, rating uint64) error {
+func (q *Queue) Enqueue(userID, rating uint64) error {
 	// if len(q.data) >= q.limit {
 	// 	return ErrQueueFull
 	// }
@@ -54,7 +82,7 @@ func (q *MysqlQueue) Enqueue(userID, rating uint64) error {
 	return nil
 }
 
-func (q *MysqlQueue) DeleteOne(userID uint64) error {
+func (q *Queue) DeleteOne(userID uint64) error {
 	qd := QueueData{UserID: userID}
 	db := q.db.Delete(&qd)
 	if db.Error != nil {
@@ -68,13 +96,13 @@ func (q *MysqlQueue) DeleteOne(userID uint64) error {
 }
 
 //Len returns length of queue
-func (q *MysqlQueue) Len() int {
+func (q *Queue) Len() int {
 	var count int
 	q.db.Table("queue_data").Count(&count)
 	return count
 }
 
-func (q *MysqlQueue) MarkMatchFound(userID uint64, found bool) error {
+func (q *Queue) MarkMatchFound(userID uint64, found bool) error {
 	var pubSubTopic PubSubTopic
 	if found {
 		pubSubTopic = PubSubTopicMatchFound
@@ -97,7 +125,7 @@ func (q *MysqlQueue) MarkMatchFound(userID uint64, found bool) error {
 	return nil
 }
 
-func (q *MysqlQueue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, total int) (found bool, matchID uint64, qds []QueueData, err error) {
+func (q *Queue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, total int) (found bool, matchID uint64, qds []QueueData, err error) {
 	// if len(q.data) >= q.limit {
 	// 	err = ErrQueueFull
 	// 	return
@@ -177,11 +205,11 @@ func (q *MysqlQueue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, tot
 	return
 }
 
-func (q *MysqlQueue) Subscribe(ch chan PubSubMessage) {
+func (q *Queue) Subscribe(ch chan PubSubMessage) {
 	q.subscribers = append(q.subscribers, ch)
 }
 
-func (q *MysqlQueue) publish(topic PubSubTopic, qd QueueData) {
+func (q *Queue) publish(topic PubSubTopic, qd QueueData) {
 	for _, v := range q.subscribers {
 		go func(ch chan PubSubMessage) {
 			select {
@@ -192,7 +220,7 @@ func (q *MysqlQueue) publish(topic PubSubTopic, qd QueueData) {
 	}
 }
 
-func (q *MysqlQueue) getMatchID() uint64 {
+func (q *Queue) getMatchID() uint64 {
 	q.matchID++
 	return q.matchID
 }

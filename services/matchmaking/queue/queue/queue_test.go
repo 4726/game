@@ -1,4 +1,4 @@
-package main
+package queue
 
 import (
 	"testing"
@@ -7,17 +7,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func newMysqlQueueTest(t testing.TB, limit int) *MysqlQueue {
-	q, err := NewMysqlQueue(limit)
+func newQueueTest(t testing.TB, limit int) *Queue {
+	q, err := New(limit)
 	assert.NoError(t, err)
 	q.db.Exec("TRUNCATE queue_data;")
 	return q
 }
 
-func TestMysqlQueueEnqueueFull(t *testing.T) {}
+func TestQueueEnqueueFull(t *testing.T) {}
 
-func TestMysqlQueueEnqueueAlreadyInQueue(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueEnqueueAlreadyInQueue(t *testing.T) {
+	q := newQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
@@ -26,8 +26,8 @@ func TestMysqlQueueEnqueueAlreadyInQueue(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMysqlQueueEnqueue(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueEnqueue(t *testing.T) {
+	q := newQueueTest(t, 100)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
 
@@ -40,8 +40,8 @@ func TestMysqlQueueEnqueue(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMysqlQueueDeleteOneDoesNotExist(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueDeleteOneDoesNotExist(t *testing.T) {
+	q := newQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	q.Enqueue(2, 1000)
 	q.Enqueue(3, 1000)
@@ -51,8 +51,8 @@ func TestMysqlQueueDeleteOneDoesNotExist(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMysqlQueueDeleteOne(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueDeleteOne(t *testing.T) {
+	q := newQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
@@ -65,16 +65,16 @@ func TestMysqlQueueDeleteOne(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMysqlQueueLen(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueLen(t *testing.T) {
+	q := newQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	q.Enqueue(2, 1000)
 	q.Enqueue(3, 1000)
 	assert.Equal(t, 3, q.Len())
 }
 
-func TestMysqlQueueMarkMatchFoundDoesNotExist(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueMarkMatchFoundDoesNotExist(t *testing.T) {
+	q := newQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	q.Enqueue(2, 1000)
 	q.Enqueue(3, 1000)
@@ -84,8 +84,8 @@ func TestMysqlQueueMarkMatchFoundDoesNotExist(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMysqlQueueMarkMatchFoundNoChange(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueMarkMatchFoundNoChange(t *testing.T) {
+	q := newQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
@@ -96,8 +96,8 @@ func TestMysqlQueueMarkMatchFoundNoChange(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMysqlQueueMarkMatchFound(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueMarkMatchFound(t *testing.T) {
+	q := newQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
@@ -109,8 +109,8 @@ func TestMysqlQueueMarkMatchFound(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMysqlQueueMarkMatchNotFoundDoesNotExist(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueMarkMatchNotFoundDoesNotExist(t *testing.T) {
+	q := newQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	q.Enqueue(2, 1000)
 	q.Enqueue(3, 1000)
@@ -120,8 +120,8 @@ func TestMysqlQueueMarkMatchNotFoundDoesNotExist(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMysqlQueueMarkMatchNotFoundNoChange(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueMarkMatchNotFoundNoChange(t *testing.T) {
+	q := newQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
@@ -130,8 +130,8 @@ func TestMysqlQueueMarkMatchNotFoundNoChange(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMysqlQueueMarkMatchNotFound(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueMarkMatchNotFound(t *testing.T) {
+	q := newQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	ch := make(chan PubSubMessage, 1)
 	q.Subscribe(ch)
@@ -147,8 +147,8 @@ func TestMysqlQueueMarkMatchNotFound(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMysqlQueueEnqueueAndFindMatchAlreadyInQueue(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueEnqueueAndFindMatchAlreadyInQueue(t *testing.T) {
+	q := newQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	q.Enqueue(2, 1000)
 	q.Enqueue(3, 1000)
@@ -161,8 +161,8 @@ func TestMysqlQueueEnqueueAndFindMatchAlreadyInQueue(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestMysqlQueueEnqueueAndFindMatchNotEnoughPlayers(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueEnqueueAndFindMatchNotEnoughPlayers(t *testing.T) {
+	q := newQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	q.Enqueue(2, 1000)
 	q.Enqueue(3, 1000)
@@ -181,8 +181,8 @@ func TestMysqlQueueEnqueueAndFindMatchNotEnoughPlayers(t *testing.T) {
 }
 
 //tests if matchfound == true will not count as available for match
-func TestMysqlQueueEnqueueAndFindMatchNotEnoughPlayers2(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueEnqueueAndFindMatchNotEnoughPlayers2(t *testing.T) {
+	q := newQueueTest(t, 100)
 	q.Enqueue(1, 1000)
 	q.Enqueue(2, 1000)
 	q.Enqueue(3, 1000)
@@ -203,8 +203,8 @@ func TestMysqlQueueEnqueueAndFindMatchNotEnoughPlayers2(t *testing.T) {
 
 //have to use assertPubSubMessageContains() because channel messages
 //come in different orders
-func TestMysqlQueueEnqueueAndFindMatchMatchFound(t *testing.T) {
-	q := newMysqlQueueTest(t, 100)
+func TestQueueEnqueueAndFindMatchMatchFound(t *testing.T) {
+	q := newQueueTest(t, 100)
 	q.Enqueue(1, 950)
 	q.Enqueue(2, 1050)
 	q.Enqueue(3, 1030)
@@ -244,4 +244,26 @@ func TestMysqlQueueEnqueueAndFindMatchMatchFound(t *testing.T) {
 	expectedMsg = PubSubMessage{PubSubTopicMatchFound, expectedQD}
 	assertPubSubMessageContains(t, expectedMsg, msgs)
 	assert.Empty(t, ch)
+}
+
+func assertPubSubMessageEqual(t testing.TB, expected, actual PubSubMessage) {
+	assert.Equal(t, expected.Topic, actual.Topic)
+	assertQueueDataEqual(t, expected.Data, actual.Data)
+}
+
+func assertQueueDataEqual(t testing.TB, expected, actual QueueData) {
+	assert.WithinDuration(t, expected.StartTime, actual.StartTime, time.Minute)
+	expected.StartTime = time.Time{}
+	actual.StartTime = time.Time{}
+	assert.Equal(t, expected, actual)
+}
+
+func assertPubSubMessageContains(t testing.TB, expected PubSubMessage, list []PubSubMessage) {
+	expected.Data.StartTime = time.Time{}
+	updatedList := []PubSubMessage{}
+	for _, v := range list {
+		v.Data.StartTime = time.Time{}
+		updatedList = append(updatedList, v)
+	}
+	assert.Contains(t, updatedList, expected)
 }
