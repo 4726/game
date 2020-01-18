@@ -163,6 +163,9 @@ func (q *MongoQueue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, tot
 		update := bson.M{"$set": qd}
 		opts := options.Update().SetUpsert(true)
 		res, err := collection.UpdateOne(sessCtx, filter, update, opts)
+		if err != nil {
+			return nil, err
+		}
 		if res.MatchedCount == 1 {
 			return nil, ErrAlreadyInQueue
 		}
