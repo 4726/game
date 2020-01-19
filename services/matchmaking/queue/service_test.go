@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/4726/game/services/matchmaking/queue/pb"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -22,6 +25,12 @@ type test struct {
 }
 
 func newTest(t testing.TB) *test {
+	s := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True", "root", "pass", "127.0.0.1:3306", "tempname")
+
+	db, err := gorm.Open("mysql", s)
+	assert.NoError(t, err)
+	db.Exec("TRUNCATE queue_data;")
+
 	lis, err := net.Listen("tcp", "127.0.0.1:14000")
 	assert.NoError(t, err)
 	server := grpc.NewServer()
@@ -112,8 +121,21 @@ func TestServiceJoinMatchFoundLater(t *testing.T) {
 	}
 	outStream, err := te.c.Join(context.Background(), in)
 	assert.NoError(t, err)
+	resp, err := outStream.Recv()
+	assert.NoError(t, err)
+	expectedResp := &pb.JoinQueueResponse{
+		UserId:          in.GetUserId(),
+		MatchId:         uint64(0),
+		Found:           false,
+		SecondsToAccept: 20,
+	}
+	assert.Equal(t, expectedResp, resp)
 
 	for i := 1; i < 10; i++ {
+		if i == 9 {
+			//have to do this because queue does not lock tables
+			time.Sleep(time.Second * 2)
+		}
 		in := &pb.JoinQueueRequest{
 			UserId: uint64(i),
 			Rating: 1000,
@@ -122,23 +144,15 @@ func TestServiceJoinMatchFoundLater(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	resp, err := outStream.Recv()
+	resp, err = outStream.Recv()
 	assert.NoError(t, err)
-	resp2, err := outStream.Recv()
-	assert.NoError(t, err)
-	expectedResp := &pb.JoinQueueResponse{
+	expectedResp = &pb.JoinQueueResponse{
 		UserId:          in.GetUserId(),
 		MatchId:         uint64(1),
 		Found:           true,
 		SecondsToAccept: 20,
 	}
-	expectedResp2 := &pb.JoinQueueResponse{
-		UserId:          in.GetUserId(),
-		MatchId:         uint64(0),
-		Found:           false,
-		SecondsToAccept: 20,
-	}
-	assert.ElementsMatch(t, []*pb.JoinQueueResponse{resp, resp2}, []*pb.JoinQueueResponse{expectedResp, expectedResp2})
+	assert.Equal(t, expectedResp, resp)
 	assertEmptyRecv(t, outStream)
 	time.Sleep(time.Second * 2)
 	assert.False(t, testIsInQueue(te, in.GetUserId()))
@@ -254,6 +268,9 @@ func TestServiceAcceptAllAccepted(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 	for i := 1; i < 11; i++ {
+		if i == 10 {
+			time.Sleep(time.Second * 2)
+		}
 		in := &pb.JoinQueueRequest{
 			UserId: uint64(i),
 			Rating: 1000,
@@ -354,6 +371,9 @@ func TestServiceAcceptOneDeniedBefore(t *testing.T) {
 	defer te.teardown()
 
 	for i := 1; i < 11; i++ {
+		if i == 10 {
+			time.Sleep(time.Second * 2)
+		}
 		in := &pb.JoinQueueRequest{
 			UserId: uint64(i),
 			Rating: 1000,
@@ -388,6 +408,9 @@ func TestServiceAcceptOneDeniedAfter(t *testing.T) {
 	defer te.teardown()
 
 	for i := 1; i < 11; i++ {
+		if i == 10 {
+			time.Sleep(time.Second * 2)
+		}
 		in := &pb.JoinQueueRequest{
 			UserId: uint64(i),
 			Rating: 1000,
@@ -435,6 +458,9 @@ func TestServiceAcceptTimeout(t *testing.T) {
 	defer te.teardown()
 
 	for i := 1; i < 11; i++ {
+		if i == 10 {
+			time.Sleep(time.Second * 2)
+		}
 		in := &pb.JoinQueueRequest{
 			UserId: uint64(i),
 			Rating: 1000,
@@ -478,6 +504,9 @@ func TestServiceDeclineNotInMatch(t *testing.T) {
 	defer te.teardown()
 
 	for i := 1; i < 11; i++ {
+		if i == 10 {
+			time.Sleep(time.Second * 2)
+		}
 		in := &pb.JoinQueueRequest{
 			UserId: uint64(i),
 			Rating: 1000,
@@ -503,6 +532,9 @@ func TestServiceDecline(t *testing.T) {
 	defer te.teardown()
 
 	for i := 1; i < 11; i++ {
+		if i == 10 {
+			time.Sleep(time.Second * 2)
+		}
 		in := &pb.JoinQueueRequest{
 			UserId: uint64(i),
 			Rating: 1000,
@@ -554,15 +586,13 @@ func TestServiceInfo(t *testing.T) {
 }
 
 func testIsInQueue(te *test, userID uint64) bool {
-	var inQueue bool
-	te.qs.queue.ForEach(func(qd QueueData) bool {
-		if qd.UserID == userID {
-			inQueue = !qd.MatchFound
-			return false
+	all, _ := te.qs.q.All()
+	for _, v := range all {
+		if v.UserID == userID {
+			return !v.MatchFound
 		}
-		return true
-	})
-	return inQueue
+	}
+	return false
 }
 
 func assertEmptyRecv(t testing.TB, stream grpc.ClientStream) {

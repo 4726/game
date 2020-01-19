@@ -65,6 +65,23 @@ func TestQueueDeleteOne(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
+func TestQueueAll(t *testing.T) {
+	q := newQueueTest(t, 100)
+	q.Enqueue(1, 1000)
+	q.Enqueue(2, 1000)
+	q.Enqueue(3, 1000)
+	all, err := q.All()
+	assert.NoError(t, err)
+
+	expectedQD1 := QueueData{1, 1000, time.Now(), false, 0}
+	expectedQD2 := QueueData{2, 1000, time.Now(), false, 0}
+	expectedQD3 := QueueData{3, 1000, time.Now(), false, 0}
+
+	assertQueueDataContains(t, expectedQD1, all)
+	assertQueueDataContains(t, expectedQD2, all)
+	assertQueueDataContains(t, expectedQD3, all)
+}
+
 func TestQueueLen(t *testing.T) {
 	q := newQueueTest(t, 100)
 	q.Enqueue(1, 1000)
@@ -263,6 +280,16 @@ func assertPubSubMessageContains(t testing.TB, expected PubSubMessage, list []Pu
 	updatedList := []PubSubMessage{}
 	for _, v := range list {
 		v.Data.StartTime = time.Time{}
+		updatedList = append(updatedList, v)
+	}
+	assert.Contains(t, updatedList, expected)
+}
+
+func assertQueueDataContains(t testing.TB, expected QueueData, list []QueueData) {
+	expected.StartTime = time.Time{}
+	updatedList := []QueueData{}
+	for _, v := range list {
+		v.StartTime = time.Time{}
 		updatedList = append(updatedList, v)
 	}
 	assert.Contains(t, updatedList, expected)

@@ -95,6 +95,16 @@ func (q *Queue) DeleteOne(userID uint64) error {
 	return nil
 }
 
+func (q *Queue) All() ([]QueueData, error) {
+	var qd []QueueData
+
+	if err := q.db.Find(&qd).Error; err != nil {
+		return qd, err
+	}
+
+	return qd, nil
+}
+
 //Len returns length of queue
 func (q *Queue) Len() int {
 	var count int
@@ -143,14 +153,13 @@ func (q *Queue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, total in
 	if err = tx.Error; err != nil {
 		return
 	}
-
-	db := q.db.FirstOrCreate(&qd)
-	if db.Error != nil {
+	res := tx.FirstOrCreate(&qd)
+	if res.Error != nil {
 		tx.Rollback()
-		err = db.Error
+		err = res.Error
 		return
 	}
-	if db.RowsAffected < 1 {
+	if res.RowsAffected < 1 {
 		tx.Commit()
 		err = ErrAlreadyInQueue
 		return
@@ -159,8 +168,9 @@ func (q *Queue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, total in
 	ratingLessThan := qd.Rating + ratingRange/2
 	ratingGreaterThan := qd.Rating - ratingRange/2
 
-	err = q.db.
-		Where("rating <= ? AND rating >= ? && match_found = ?", ratingLessThan, ratingGreaterThan, false).
+	qds = []QueueData{}
+	err = tx.
+		Where("rating <= ? AND rating >= ? AND match_found = ?", ratingLessThan, ratingGreaterThan, false).
 		Order("start_time asc").
 		Limit(total).
 		Find(&qds).Error
@@ -173,7 +183,7 @@ func (q *Queue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, total in
 	if len(qds) >= total {
 		tempMatchID = q.getMatchID()
 		for i, v := range qds {
-			err = q.db.Model(&v).Update("match_found", true).Error
+			err = tx.Model(&v).Update("match_found", true).Error
 			if err != nil {
 				tx.Rollback()
 				return

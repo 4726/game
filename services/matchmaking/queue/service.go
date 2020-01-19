@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/4726/game/services/matchmaking/queue/pb"
+	"github.com/4726/game/services/matchmaking/queue/queue"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -14,7 +15,7 @@ var defaultMatchAcceptTimeout = time.Second * 20
 var defaultCheckTimeout = time.Minute
 
 type QueueService struct {
-	queue       *Queue
+	q           *queue.Queue
 	matches     map[uint64]*Match
 	matchesLock sync.Mutex
 	queueTimes  *QueueTimes
@@ -38,8 +39,9 @@ type QueueServiceOptions struct {
 }
 
 func NewQueueService(opts QueueServiceOptions) *QueueService {
+	q, _ := queue.New(10000)
 	qs := &QueueService{
-		queue:      NewQueue(10000),
+		q:          q,
 		matches:    map[uint64]*Match{},
 		queueTimes: NewQueueTimes(1000),
 		opts:       opts,
@@ -54,7 +56,7 @@ func NewQueueService(opts QueueServiceOptions) *QueueService {
 					state := v.State()
 					for _, userID := range state.Unknown {
 						//remove all players that didnt reply from the queue
-						qs.queue.DeleteOne(userID)
+						qs.q.DeleteOne(userID)
 					}
 					delete(qs.matches, k)
 				}
@@ -72,7 +74,7 @@ func (s *QueueService) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServ
 	_, ok := s.inQueue[in.GetUserId()]
 	if ok {
 		s.inQueueLock.Unlock()
-		return status.Error(codes.FailedPrecondition, ErrAlreadyInQueue.Error())
+		return status.Error(codes.FailedPrecondition, queue.ErrAlreadyInQueue.Error())
 	}
 	leaveQueueCh := make(chan struct{}, 1)
 	matchFoundCh := make(chan uint64, 1)
@@ -86,9 +88,9 @@ func (s *QueueService) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServ
 		s.inQueueLock.Unlock()
 	}()
 
-	found, matchID, users, err := s.queue.EnqueueAndFindMatch(in.GetUserId(), in.GetRating(), s.opts.RatingRange, s.opts.PlayerCount)
+	found, matchID, users, err := s.q.EnqueueAndFindMatch(in.GetUserId(), in.GetRating(), s.opts.RatingRange, s.opts.PlayerCount)
 	if err != nil {
-		if err == ErrAlreadyInQueue {
+		if err == queue.ErrAlreadyInQueue {
 			return status.Error(codes.FailedPrecondition, err.Error())
 		}
 		return status.Error(codes.Internal, err.Error())
@@ -101,7 +103,7 @@ func (s *QueueService) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServ
 		SecondsToAccept: 20,
 	}
 	if err := outStream.Send(resp); err != nil {
-		s.queue.DeleteOne(in.GetUserId())
+		s.q.DeleteOne(in.GetUserId())
 		return err
 	}
 
@@ -125,7 +127,7 @@ func (s *QueueService) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServ
 				SecondsToAccept: 20,
 			}
 			if err := outStream.Send(resp); err != nil {
-				s.queue.DeleteOne(in.GetUserId())
+				s.q.DeleteOne(in.GetUserId())
 				return err
 			}
 		case <-matchStartFailCh:
@@ -136,7 +138,7 @@ func (s *QueueService) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServ
 				SecondsToAccept: 20,
 			}
 			if err := outStream.Send(resp); err != nil {
-				s.queue.DeleteOne(in.GetUserId())
+				s.q.DeleteOne(in.GetUserId())
 				return err
 			}
 		}
@@ -144,7 +146,7 @@ func (s *QueueService) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServ
 }
 
 func (s *QueueService) Leave(ctx context.Context, in *pb.LeaveQueueRequest) (*pb.LeaveQueueResponse, error) {
-	s.queue.DeleteOne(in.GetUserId())
+	s.q.DeleteOne(in.GetUserId())
 
 	return &pb.LeaveQueueResponse{
 		UserId: in.GetUserId(),
@@ -159,7 +161,7 @@ func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Acce
 	readdToQueue := true
 	defer func() {
 		if readdToQueue {
-			s.queue.MarkMatchFound(in.GetUserId(), false)
+			s.q.MarkMatchFound(in.GetUserId(), false)
 		}
 	}()
 
@@ -202,7 +204,7 @@ func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Acce
 		}
 		if resp.Cancelled {
 			//someone declined or timeout
-			s.queue.MarkMatchFound(in.GetUserId(), false)
+			s.q.MarkMatchFound(in.GetUserId(), false)
 			s.matchesLock.Lock()
 			delete(s.matches, in.GetMatchId())
 			s.matchesLock.Unlock()
@@ -211,7 +213,7 @@ func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Acce
 		if resp.GetTotalAccepted() == resp.GetTotalNeeded() {
 			//everyone accepted, remove user from queue
 			//also removes match
-			s.queue.DeleteOne(in.GetUserId())
+			s.q.DeleteOne(in.GetUserId())
 			delete(s.matches, in.GetMatchId())
 			readdToQueue = false
 			return nil
@@ -233,7 +235,7 @@ func (s *QueueService) Decline(ctx context.Context, in *pb.DeclineQueueRequest) 
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	s.queue.DeleteOne(in.GetUserId())
+	s.q.DeleteOne(in.GetUserId())
 	s.matchesLock.Lock()
 	delete(s.matches, in.GetMatchId())
 	s.matchesLock.Unlock()
@@ -246,13 +248,13 @@ func (s *QueueService) Decline(ctx context.Context, in *pb.DeclineQueueRequest) 
 func (s *QueueService) Info(ctx context.Context, in *pb.QueueInfoRequest) (*pb.QueueInfoResponse, error) {
 	return &pb.QueueInfoResponse{
 		SecondsEstimated: uint32(s.queueTimes.EstimatedWaitTime(in.GetRating(), 100).Seconds()),
-		UserCount:        uint32(s.queue.Len()),
+		UserCount:        uint32(s.q.Len()),
 	}, nil
 }
 
 func (s *QueueService) notifyQueueStateChanges() {
-	ch := make(chan PubSubMessage, 1)
-	s.queue.Subscribe(ch)
+	ch := make(chan queue.PubSubMessage, 1)
+	s.q.Subscribe(ch)
 
 	for msg := range ch {
 		userID := msg.Data.UserID
@@ -265,11 +267,11 @@ func (s *QueueService) notifyQueueStateChanges() {
 		}
 
 		switch msg.Topic {
-		case PubSubTopicDelete:
+		case queue.PubSubTopicDelete:
 			qChs.LeaveCh <- struct{}{}
-		case PubSubTopicMatchFound:
+		case queue.PubSubTopicMatchFound:
 			qChs.MatchFoundCh <- msg.Data.MatchID
-		case PubSubTopicMatchNotFound:
+		case queue.PubSubTopicMatchNotFound:
 			qChs.MatchStartFail <- struct{}{}
 		}
 	}
