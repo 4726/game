@@ -9,7 +9,7 @@ import (
 
 func TestMatchAcceptUserDoesNotExist(t *testing.T) {
 	ch := make(chan MatchPubSubMessage, 1)
-	m, err := NewMatch(ch)
+	m, err := NewMatches(ch)
 	assert.NoError(t, err)
 	assert.NoError(t, m.r.FlushAll().Err())
 	assert.NoError(t, m.AddUsers(1, []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20))
@@ -19,7 +19,7 @@ func TestMatchAcceptUserDoesNotExist(t *testing.T) {
 
 func TestMatchAcceptUserAlreadyAccepted(t *testing.T) {
 	ch := make(chan MatchPubSubMessage, 1)
-	m, err := NewMatch(ch)
+	m, err := NewMatches(ch)
 	assert.NoError(t, err)
 	assert.NoError(t, m.r.FlushAll().Err())
 	assert.NoError(t, m.AddUsers(1, []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20))
@@ -31,19 +31,19 @@ func TestMatchAcceptUserAlreadyAccepted(t *testing.T) {
 
 func TestMatchAcceptNoLongerExists(t *testing.T) {
 	ch := make(chan MatchPubSubMessage, 1)
-	m, err := NewMatch(ch)
+	m, err := NewMatches(ch)
 	assert.NoError(t, err)
 	assert.NoError(t, m.r.FlushAll().Err())
 	assert.NoError(t, m.AddUsers(1, []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20))
 	m.Decline(1, 2)
 	<-ch
-	assert.Equal(t, ErrUserNotInMatch, m.Accept(1, 1))
+	assert.Equal(t, ErrMatchCancelled, m.Accept(1, 1))
 	assert.Empty(t, ch)
 }
 
 func TestMatchAcceptExpired(t *testing.T) {
 	ch := make(chan MatchPubSubMessage, 1)
-	m, err := NewMatch(ch)
+	m, err := NewMatches(ch)
 	assert.NoError(t, err)
 	assert.NoError(t, m.r.FlushAll().Err())
 	assert.NoError(t, m.AddUsers(1, []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second))
@@ -54,7 +54,7 @@ func TestMatchAcceptExpired(t *testing.T) {
 
 func TestMatchAccept(t *testing.T) {
 	ch := make(chan MatchPubSubMessage, 1)
-	m, err := NewMatch(ch)
+	m, err := NewMatches(ch)
 	assert.NoError(t, err)
 	assert.NoError(t, m.r.FlushAll().Err())
 	assert.NoError(t, m.AddUsers(1, []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20))
@@ -73,7 +73,7 @@ func TestMatchAccept(t *testing.T) {
 
 func TestMatchDeclineUserDoesNotExist(t *testing.T) {
 	ch := make(chan MatchPubSubMessage, 1)
-	m, err := NewMatch(ch)
+	m, err := NewMatches(ch)
 	assert.NoError(t, err)
 	assert.NoError(t, m.r.FlushAll().Err())
 	assert.NoError(t, m.AddUsers(1, []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20))
@@ -83,7 +83,7 @@ func TestMatchDeclineUserDoesNotExist(t *testing.T) {
 
 func TestMatchDeclineUserAlreadyAccepted(t *testing.T) {
 	ch := make(chan MatchPubSubMessage, 1)
-	m, err := NewMatch(ch)
+	m, err := NewMatches(ch)
 	assert.NoError(t, err)
 	assert.NoError(t, m.r.FlushAll().Err())
 	assert.NoError(t, m.AddUsers(1, []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20))
@@ -95,19 +95,19 @@ func TestMatchDeclineUserAlreadyAccepted(t *testing.T) {
 
 func TestMatchDeclineNoLongerExists(t *testing.T) {
 	ch := make(chan MatchPubSubMessage, 1)
-	m, err := NewMatch(ch)
+	m, err := NewMatches(ch)
 	assert.NoError(t, err)
 	assert.NoError(t, m.r.FlushAll().Err())
 	assert.NoError(t, m.AddUsers(1, []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20))
 	m.Decline(1, 2)
 	<-ch
-	assert.Equal(t, ErrUserNotInMatch, m.Decline(1, 1))
+	assert.Equal(t, ErrMatchCancelled, m.Decline(1, 1))
 	assert.Empty(t, ch)
 }
 
 func TestMatchDeclineExpired(t *testing.T) {
 	ch := make(chan MatchPubSubMessage, 1)
-	m, err := NewMatch(ch)
+	m, err := NewMatches(ch)
 	assert.NoError(t, err)
 	assert.NoError(t, m.r.FlushAll().Err())
 	assert.NoError(t, m.AddUsers(1, []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second))
@@ -118,7 +118,7 @@ func TestMatchDeclineExpired(t *testing.T) {
 
 func TestMatchDecline(t *testing.T) {
 	ch := make(chan MatchPubSubMessage, 1)
-	m, err := NewMatch(ch)
+	m, err := NewMatches(ch)
 	assert.NoError(t, err)
 	assert.NoError(t, m.r.FlushAll().Err())
 	assert.NoError(t, m.AddUsers(1, []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, time.Second*20))
