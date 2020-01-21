@@ -2,42 +2,18 @@ package queue
 
 import (
 	"errors"
-	"fmt"
-	"sync"
+	"strconv"
 	"time"
 
+	"github.com/go-redis/redis/v7"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/jinzhu/gorm"
 )
-
-type PubSubTopic int
-
-const (
-	PubSubTopicAdd PubSubTopic = iota
-	PubSubTopicDelete
-	PubSubTopicMatchFound
-	PubSubTopicMatchNotFound
-)
-
-type QueueData struct {
-	UserID     uint64 `gorm:"PRIMARY_KEY;NOT NULL"`
-	Rating     uint64
-	StartTime  time.Time
-	MatchFound bool
-	MatchID    uint64
-}
-
-type PubSubMessage struct {
-	Topic PubSubTopic
-	Data  QueueData
-}
 
 type Queue struct {
-	sync.Mutex
-	db          *gorm.DB
-	limit       int
-	subscribers []chan PubSubMessage
-	matchID     uint64
+	r       *redis.Client
+	matchID uint64
+	ps      *pubSub
+	matches *Matches
 }
 
 var ErrAlreadyInQueue = errors.New("user already in queue")
@@ -45,189 +21,286 @@ var ErrDoesNotExist = errors.New("does not exist")
 var ErrNotAllExists = errors.New("not all exists")
 var ErrQueueFull = errors.New("queue full")
 
-func New(limit int) (*Queue, error) {
-	s := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True", "root", "pass", "127.0.0.1:3306", "tempname")
+func New(subscribers []chan interface{}) (*Queue, error) {
+	r := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
 
-	db, err := gorm.Open("mysql", s)
+	if err := r.Ping().Err(); err != nil {
+		return nil, err
+	}
+
+	if err := r.ConfigSet("notify-keyspace-events", "Eghx").Err(); err != nil {
+		return nil, err
+	}
+
+	q := &Queue{
+		r:       r,
+		matchID: uint64(0),
+		ps:      newPubSub(subscribers),
+	}
+
+	matchCh := make(chan MatchPubSubMessage, 1)
+	go func(ch chan MatchPubSubMessage) {
+		for msg := range ch {
+			if msg.State.Cancelled {
+				for k, v := range msg.State.Players {
+					if v != MatchDeclined {
+						q.ps.publish(PubSubTopicGroupFailed{
+							UserID:     k,
+							Rating:     0,
+							Expired:    false,
+							UserDenied: true,
+						})
+						res, err := q.r.HGet("queue:groupfound", strconv.FormatUint(k, 10)).Result()
+						if err != nil {
+							continue
+						}
+						rating, err := strconv.ParseUint(res, 10, 64)
+						if err != nil {
+							continue
+						}
+						if err := q.r.HDel("queue:groupfound", strconv.FormatUint(k, 10)).Err(); err != nil {
+							continue
+						}
+						q.EnqueueAndFindMatch(k, rating, 100, 10)
+					} else {
+						q.DeleteOne(k)
+					}
+				}
+				return
+			}
+			(userID, rating, ratingRange uint64, total int)
+			if msg.State.Expired {
+				for k, v := range msg.State.Players {
+					if v != MatchAccepted {
+						q.DeleteOne(k)
+					} else {
+						q.ps.publish(PubSubTopicGroupFailed{
+							UserID:     k,
+							Rating:     0,
+							Expired:    true,
+							UserDenied: false,
+						})
+						res, err := q.r.HGet("queue:groupfound", strconv.FormatUint(k, 10)).Result()
+						if err != nil {
+							continue
+						}
+						rating, err := strconv.ParseUint(res, 10, 64)
+						if err != nil {
+							continue
+						}
+						if err := q.r.HDel("queue:groupfound", strconv.FormatUint(k, 10)).Err(); err != nil {
+							continue
+						}
+						q.EnqueueAndFindMatch(k, rating, 100, 10)
+					}
+				}
+				return
+			}
+
+			var usersAccepted, usersInGroup []uint64
+			for k, v := range msg.State.Players {
+				if v == MatchAccepted {
+					usersAccepted = append(usersAccepted, k)
+				}
+				usersInGroup = append(usersInGroup, k)
+			}
+
+			for k, v := range msg.State.Players {
+				q.ps.publish(PubSubTopicGroupUpdate{
+					UserID:        k,
+					Rating:        0,
+					UsersAccepted: usersAccepted,
+					UsersInGroup:  usersInGroup,
+				})
+			}
+		}
+	}(matchCh)
+	matches, err := NewMatches(matchCh)
 	if err != nil {
 		return nil, err
 	}
 
-	db.AutoMigrate(&QueueData{})
+	q.matches = matches
 
-	return &Queue{
-		db:          db,
-		limit:       limit,
-		subscribers: []chan PubSubMessage{},
-		matchID:     uint64(0),
-	}, err
+	if err := r.ConfigSet("notify-keyspace-events", "Eghx").Err(); err != nil {
+		return nil, err
+	}
+
+	pubsub := r.PSubscribe("custom:queue:*")
+	if _, err := pubsub.Receive(); err != nil {
+		return nil, err
+	}
+	go func(ch <-chan *redis.Message) {
+		for msg := range ch {
+			switch msg.Channel {
+			case "custom:queue:groupfound":
+				userID, err := strconv.ParseUint(msg.Payload, 10, 64)
+				if err != nil {
+					continue
+				}
+				q.ps.publish(PubSubTopicGroupFound{
+					UserID: userID,
+					Rating: 0,
+					Users:  usersInGroup,
+				})
+			case "custom:queue:delete":
+				userID, err := strconv.ParseUint(msg.Payload, 10, 64)
+				if err != nil {
+					continue
+				}
+				q.ps.publish(PubSubTopicLeftQueue{
+					UserID: userID,
+					Rating: 0,
+				})
+			case "custom:queue:add":
+				userID, err := strconv.ParseUint(msg.Payload, 10, 64)
+				if err != nil {
+					continue
+				}
+				q.ps.publish(PubSubTopicJoinQueue{
+					UserID: userID,
+					Rating: 0,
+				})
+			}
+
+		}
+	}(pubsub.Channel())
+
+	return q, nil
 }
 
 func (q *Queue) Enqueue(userID, rating uint64) error {
-	// if len(q.data) >= q.limit {
-	// 	return ErrQueueFull
-	// }
-
-	qd := QueueData{userID, rating, time.Now(), false, 0}
-
-	db := q.db.FirstOrCreate(&qd)
-	if db.Error != nil {
-		return db.Error
+	rows, err := q.r.ZAddNX("queue", &redis.Z{float64(rating), userID}).Result()
+	if err != nil {
+		return err
 	}
-	if db.RowsAffected < 1 {
+	if rows == 0 {
 		return ErrAlreadyInQueue
 	}
 
-	q.publish(PubSubTopicAdd, qd)
-	return nil
+	return q.r.Publish("custom:queue:add", userID).Err()
 }
 
 func (q *Queue) DeleteOne(userID uint64) error {
-	qd := QueueData{UserID: userID}
-	db := q.db.Delete(&qd)
-	if db.Error != nil {
-		return db.Error
+	var zScoreRes *redis.FloatCmd
+	var zRemRes *redis.IntCmd
+	_, err := q.r.TxPipelined(func(pipe redis.Pipeliner) error {
+		zScoreRes = pipe.ZScore("queue", strconv.FormatUint(userID))
+		zRemRes = pipe.ZRem("queue", userID)
+		return nil
+	})
+	if err != nil {
+		return err
 	}
-	if db.RowsAffected < 1 {
+	rows, err := zRemRes.Result()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
 		return ErrDoesNotExist
 	}
-	q.publish(PubSubTopicDelete, qd)
-	return nil
-}
-
-func (q *Queue) All() ([]QueueData, error) {
-	var qd []QueueData
-
-	if err := q.db.Find(&qd).Error; err != nil {
-		return qd, err
-	}
-
-	return qd, nil
-}
-
-//Len returns length of queue
-func (q *Queue) Len() int {
-	var count int
-	q.db.Table("queue_data").Count(&count)
-	return count
-}
-
-func (q *Queue) MarkMatchFound(userID uint64, found bool) error {
-	var pubSubTopic PubSubTopic
-	if found {
-		pubSubTopic = PubSubTopicMatchFound
-	} else {
-		pubSubTopic = PubSubTopicMatchNotFound
-	}
-
-	qd := QueueData{UserID: userID}
-	res := q.db.Model(&qd).Update("match_found", found)
-	if res.Error != nil {
-		return res.Error
-	}
-	if res.RowsAffected < 1 {
-		//either does not exist or matchfound was already set to found
-		return nil
-
-	}
-
-	q.publish(pubSubTopic, qd)
-	return nil
-}
-
-func (q *Queue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, total int) (found bool, matchID uint64, qds []QueueData, err error) {
-	// if len(q.data) >= q.limit {
-	// 	err = ErrQueueFull
-	// 	return
-	// }
-
-	qd := QueueData{userID, rating, time.Now(), false, 0}
-
-	tx := q.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	if err = tx.Error; err != nil {
-		return
-	}
-	res := tx.FirstOrCreate(&qd)
-	if res.Error != nil {
-		tx.Rollback()
-		err = res.Error
-		return
-	}
-	if res.RowsAffected < 1 {
-		tx.Commit()
-		err = ErrAlreadyInQueue
-		return
-	}
-
-	ratingLessThan := qd.Rating + ratingRange/2
-	ratingGreaterThan := qd.Rating - ratingRange/2
-
-	qds = []QueueData{}
-	err = tx.
-		Where("rating <= ? AND rating >= ? AND match_found = ?", ratingLessThan, ratingGreaterThan, false).
-		Order("start_time asc").
-		Limit(total).
-		Find(&qds).Error
+	rating, err := zScoreRes.Result()
 	if err != nil {
-		tx.Rollback()
+		return err
+	}
+
+	return q.r.Publish("custom:queue:delete", userID).Err()
+}
+
+func (q *Queue) All() (map[uint64]uint64, error) {
+	m := map[uint64]uint64{}
+
+	res, err := q.r.ZRangeWithScores("queue", 0, -1).Result()
+	if err != nil {
+		return m, err
+	}
+
+	for _, v := range res {
+		userID, err := strconv.ParseUint(v.Member.(string), 10, 64)
+		if err != nil {
+			return m, err
+		}
+		m[userID] = uint64(v.Score)
+	}
+
+	return m, nil
+}
+
+func (q *Queue) Len() (int, error) {
+	count, err := q.r.ZCard("queue").Result()
+	return int(count), err
+}
+
+func (q *Queue) EnqueueAndFindMatch(userID, rating, ratingRange uint64, total int) error {
+	var enterQueueRes *redis.FloatCmd
+	_, err := q.r.TxPipelined(func(pipe redis.Pipeliner) error {
+		//need to also check if is in matchfound hash
+		enterQueueRes = pipe.ZAddNX("queue", &redis.Z{float64(rating), userID})
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	rows, err := enterQueueRes.Result()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return  ErrAlreadyInQueue
+	}
+
+	if err := q.r.Publish("custom:queue:add", userID).Err(); errr != nil {
+		return err
+	}
+
+	ratingLessThan := rating + ratingRange/2
+	ratingGreaterThan := rating - ratingRange/2
+
+	//need transaction start
+	res, err := q.r.ZRangeByScoreWithScores("queue", &redis.ZRangeBy{
+		Min:    strconv.FormatUint(ratingGreaterThan, 10),
+		Max:    strconv.FormatUint(ratingLessThan, 10),
+		Offset: 0,
+		Count:  int64(total),
+	}).Result()
+	if err != nil {
+		return err
+	}
+
+	if len(res) < total {
 		return
 	}
 
-	var tempMatchID uint64
-	if len(qds) >= total {
-		tempMatchID = q.getMatchID()
-		for i, v := range qds {
-			err = tx.Model(&v).Update("match_found", true).Error
-			if err != nil {
-				tx.Rollback()
-				return
-			}
-			v.MatchFound = true
-			v.MatchID = tempMatchID
-			qds[i] = v
+	matchID := q.getMatchID()
+	var usersInGroup []uint64
+	for _, v := range res {
+		userID, err := strconv.ParseUint(v.Member.(string), 10, 64)
+		if err != nil {
+			return err
+		}
+		rating := uint64(v.Score)
+		_, err = q.r.ZRem("queue", userID).Result()
+		if err != nil {
+			return err
+		}
+		_, err = q.r.HSet("queue:groupfound", v.Member.(string), rating).Result()
+		if err != nil {
+			return err
+		}
+		usersInGroup = append(usersInGroup, userID)
+		err = q.r.Publish("custom:groupfound", v.Member.(string)).Err()
+		if err != nil {
+			return err
 		}
 	}
+	//need transaction end
 
-	if err = tx.Commit().Error; err != nil {
-		tx.Rollback()
-		return
-	}
-
-	q.publish(PubSubTopicAdd, qd)
-
-	if len(qds) < total {
-		qds = []QueueData{}
-		return
-	}
-
-	found = true
-	matchID = tempMatchID
-	for _, v := range qds {
-		q.publish(PubSubTopicMatchFound, v)
-	}
-
-	return
-}
-
-func (q *Queue) Subscribe(ch chan PubSubMessage) {
-	q.subscribers = append(q.subscribers, ch)
-}
-
-func (q *Queue) publish(topic PubSubTopic, qd QueueData) {
-	for _, v := range q.subscribers {
-		go func(ch chan PubSubMessage) {
-			select {
-			case ch <- PubSubMessage{topic, qd}:
-			case <-time.After(time.Second * 10):
-			}
-		}(v)
-	}
+	return q.matches.AddUsers(matchID, usersInGroup, time.Second*20)
 }
 
 func (q *Queue) getMatchID() uint64 {

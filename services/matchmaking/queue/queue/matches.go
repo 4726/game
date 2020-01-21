@@ -45,13 +45,17 @@ func NewMatches(ch chan MatchPubSubMessage) (*Matches, error) {
 		DB:       0,
 	})
 
+	if err := r.Ping().Err(); err != nil {
+		return nil, err
+	}
+
 	if err := r.ConfigSet("notify-keyspace-events", "Eghx").Err(); err != nil {
 		return nil, err
 	}
 
 	m := &Matches{r: r, subscribers: []chan MatchPubSubMessage{ch}}
 
-	pubsub := r.PSubscribe("__keyevent@0__:*", "custom:*")
+	pubsub := r.PSubscribe("__keyevent@0__:*", "custom:match:*")
 	if _, err := pubsub.Receive(); err != nil {
 		return nil, err
 	}
@@ -65,14 +69,14 @@ func NewMatches(ch chan MatchPubSubMessage) (*Matches, error) {
 				}
 				state := MatchStatus{Expired: true}
 				m.sendState(matchID, state)
-			case "custom:accepted":
+			case "custom:match:accepted":
 				matchID, err := strconv.ParseUint(msg.Payload, 10, 64)
 				if err != nil {
 					continue
 				}
 				state, _ := m.getState(matchID)
 				m.sendState(matchID, state)
-			case "custom:cancelled":
+			case "custom:match:cancelled":
 				matchID, err := strconv.ParseUint(msg.Payload, 10, 64)
 				if err != nil {
 					continue
@@ -120,7 +124,7 @@ func (m *Matches) Accept(matchID, userID uint64) error {
 			return err
 		}
 
-		return pipe.Publish("custom:accepted", strconv.FormatUint(matchID, 10)).Err()
+		return pipe.Publish("custom:match:accepted", strconv.FormatUint(matchID, 10)).Err()
 	})
 
 	return err
@@ -147,7 +151,7 @@ func (m *Matches) Decline(matchID, userID uint64) error {
 			return err
 		}
 
-		return pipe.Publish("custom:cancelled", strconv.FormatUint(matchID, 10)).Err()
+		return pipe.Publish("custom:match:cancelled", strconv.FormatUint(matchID, 10)).Err()
 	})
 
 	return err
