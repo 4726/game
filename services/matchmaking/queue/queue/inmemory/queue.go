@@ -15,6 +15,7 @@ type Queue struct {
 	perMatch    int
 	ratingRange int
 	groups      map[uint64]map[uint64]struct{}
+	foundCh     chan queue.Match
 }
 
 var ErrAlreadyInQueue = errors.New("user already in queue")
@@ -31,6 +32,7 @@ func New(limit, perMatch, ratingRange int) *Queue {
 		perMatch:    perMatch,
 		ratingRange: ratingRange,
 		groups:      map[uint64]map[uint64]struct{}{},
+		foundCh:     make(chan queue.Match),
 	}
 }
 
@@ -71,8 +73,14 @@ func (q *Queue) Leave(userID uint64) error {
 	q.Lock()
 	defer q.Unlock()
 
-	if _, exists := q.data[userID]; !exists {
+	userData, exists := q.data[userID]
+	if !exists {
 		return ErrDoesNotExist
+	}
+
+	userData.JoinStatusChannel <- queue.JoinStatus{
+		State: queue.JoinStateLeft,
+		Data:  queue.JoinStateLeftData{},
 	}
 
 	delete(q.data, userID)
@@ -136,6 +144,7 @@ func (q *Queue) Decline(userID, matchID uint64) error {
 		userData.AcceptStatusChannel = nil
 		q.data[k] = userData
 	}
+	delete(q.groups, matchID)
 	delete(q.data, userID)
 	return nil
 }
@@ -150,6 +159,10 @@ func (q *Queue) All() (map[uint64]queue.UserData, error) {
 	}
 
 	return m, nil
+}
+
+func (q *Queue) Channel() <-chan queue.Match {
+	return q.foundCh
 }
 
 func setQueueStateInQueue(userData *queue.UserData, data queue.QueueStateInQueueData) {
@@ -207,12 +220,15 @@ func (q *Queue) searchMatch(userID uint64) {
 	q.groups[matchID] = suitableUsers
 }
 
-//need to handle when all users acce[ted]
 func (q *Queue) sendMatchUpdate(matchID uint64) {
 	q.Lock()
 	defer q.Unlock()
 
-	usersInMatch := q.groups[matchID]
+	usersInMatch, ok := q.groups[matchID]
+	if !ok {
+		//multiple users accepted at same time and no longer exists
+		return
+	}
 	var accepted int
 	for k := range usersInMatch {
 		userData := q.data[k]
@@ -222,6 +238,34 @@ func (q *Queue) sendMatchUpdate(matchID uint64) {
 		}
 	}
 
+	if accepted == len(usersInMatch) {
+		matchUsers := map[uint64]uint64{}
+		for k := range usersInMatch {
+			userData := q.data[k]
+			userData.AcceptStatusChannel <- queue.AcceptStatus{
+				State: queue.AcceptStateSuccess,
+				Data: queue.AcceptStateSuccessData{
+					UserCount: accepted,
+					MatchID:   matchID,
+				},
+			}
+			userData.JoinStatusChannel <- queue.JoinStatus{
+				State: queue.JoinStateLeft,
+				Data:  queue.JoinStateLeftData{},
+			}
+			matchUsers[k] = userData.Rating
+			close(userData.JoinStatusChannel)
+			close(userData.AcceptStatusChannel)
+			delete(q.data, k)
+		}
+
+		q.foundCh <- queue.Match{
+			Users:   matchUsers,
+			MatchID: matchID,
+		}
+		delete(q.groups, matchID)
+		return
+	}
 	for k := range usersInMatch {
 		userData := q.data[k]
 		if userData.AcceptStatusChannel != nil {

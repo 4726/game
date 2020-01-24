@@ -6,6 +6,7 @@ type Queue interface {
 	Accept(userID, matchID uint64) (<-chan AcceptStatus, error)
 	Decline(userID, matchID uint64) error
 	All() (map[uint64]UserData, error)
+	Channel() <-chan Match
 }
 
 type UserData struct {
@@ -62,6 +63,7 @@ const (
 	AcceptStateUpdate AcceptState = iota
 	AcceptStateFailed
 	AcceptStateExpired
+	AcceptStateSuccess
 )
 
 type AcceptStatusUpdateData struct {
@@ -71,3 +73,13 @@ type AcceptStatusUpdateData struct {
 type AcceptStateFailedData struct{}
 
 type AcceptStateExpiredData struct{}
+
+type AcceptStateSuccessData struct {
+	UserCount int
+	MatchID   uint64
+}
+
+type Match struct {
+	Users   map[uint64]uint64
+	MatchID uint64
+}
