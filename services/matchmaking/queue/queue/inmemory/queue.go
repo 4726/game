@@ -19,12 +19,9 @@ type Queue struct {
 
 var ErrAlreadyInQueue = errors.New("user already in queue")
 var ErrDoesNotExist = errors.New("does not exist")
-var ErrNotAllExists = errors.New("not all exists")
 var ErrQueueFull = errors.New("queue full")
 var ErrUserNotInMatch = errors.New("user is not in this match")
 var ErrUserAlreadyAccepted = errors.New("user already accepted")
-var ErrUserAlreadyDeclined = errors.New("user already declined")
-var ErrMatchCancelled = errors.New("match is cancelled")
 
 func New(limit, perMatch, ratingRange int) *Queue {
 	return &Queue{
@@ -99,12 +96,13 @@ func (q *Queue) Accept(userID, matchID uint64) (<-chan queue.AcceptStatus, error
 	}
 
 	ch := make(chan queue.AcceptStatus)
-	q.setQueueStateInGroup(userID, queue.QueueStateInGroupData{
+	setQueueStateInGroup(&userData, queue.QueueStateInGroupData{
 		Accepted: true,
 		Denied:   false,
 		MatchID:  matchID,
 	})
 	userData.AcceptStatusChannel = ch
+	q.data[userID] = userData
 	go q.sendMatchUpdate(matchID)
 	return ch, nil
 }
@@ -133,11 +131,12 @@ func (q *Queue) Decline(userID, matchID uint64) error {
 				Data:  queue.AcceptStateFailedData{},
 			}
 			close(userData.AcceptStatusChannel)
-			q.setQueueStateInQueue(k, queue.QueueStateInQueueData{})
-			userData.AcceptStatusChannel = nil
-			q.data[k] = userData
 		}
+		setQueueStateInQueue(&userData, queue.QueueStateInQueueData{})
+		userData.AcceptStatusChannel = nil
+		q.data[k] = userData
 	}
+	delete(q.data, userID)
 	return nil
 }
 
@@ -145,17 +144,20 @@ func (q *Queue) All() (map[uint64]queue.UserData, error) {
 	q.Lock()
 	defer q.Unlock()
 
-	return q.data, nil
+	m := map[uint64]queue.UserData{}
+	for k, v := range q.data {
+		m[k] = v
+	}
+
+	return m, nil
 }
 
-func (q *Queue) setQueueStateInQueue(userID uint64, data queue.QueueStateInQueueData) {
-	userData := q.data[userID]
+func setQueueStateInQueue(userData *queue.UserData, data queue.QueueStateInQueueData) {
 	userData.State = queue.QueueStateInQueue
 	userData.Data = data
 }
 
-func (q *Queue) setQueueStateInGroup(userID uint64, data queue.QueueStateInGroupData) {
-	userData := q.data[userID]
+func setQueueStateInGroup(userData *queue.UserData, data queue.QueueStateInGroupData) {
 	userData.State = queue.QueueStateInGroup
 	userData.Data = data
 }
@@ -195,7 +197,7 @@ func (q *Queue) searchMatch(userID uint64) {
 				MatchID: matchID,
 			},
 		}
-		q.setQueueStateInGroup(k, queue.QueueStateInGroupData{
+		setQueueStateInGroup(&userData, queue.QueueStateInGroupData{
 			Accepted: false,
 			Denied:   false,
 			MatchID:  matchID,
@@ -205,6 +207,7 @@ func (q *Queue) searchMatch(userID uint64) {
 	q.groups[matchID] = suitableUsers
 }
 
+//need to handle when all users acce[ted]
 func (q *Queue) sendMatchUpdate(matchID uint64) {
 	q.Lock()
 	defer q.Unlock()
@@ -225,8 +228,8 @@ func (q *Queue) sendMatchUpdate(matchID uint64) {
 			userData.AcceptStatusChannel <- queue.AcceptStatus{
 				State: queue.AcceptStateUpdate,
 				Data: queue.AcceptStatusUpdateData{
-					UsersNeeded:   accepted,
-					UsersAccepted: len(usersInMatch),
+					UsersAccepted: accepted,
+					UsersNeeded:   len(usersInMatch),
 				},
 			}
 		}
