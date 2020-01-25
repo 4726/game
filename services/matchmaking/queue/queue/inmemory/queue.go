@@ -3,19 +3,22 @@ package inmemory
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/4726/game/services/matchmaking/queue/queue"
 )
 
 type Queue struct {
 	sync.Mutex
-	data        map[uint64]queue.UserData
-	limit       int
-	matchID     uint64
-	perMatch    int
-	ratingRange int
-	groups      map[uint64]map[uint64]struct{}
-	foundCh     chan queue.Match
+	data          map[uint64]queue.UserData
+	limit         int
+	matchID       uint64
+	perMatch      int
+	ratingRange   int
+	groups        map[uint64]map[uint64]struct{}
+	foundCh       chan queue.Match
+	acceptTimeout time.Duration
+	groupTimers   map[uint64]*time.Timer
 }
 
 var ErrAlreadyInQueue = errors.New("user already in queue")
@@ -26,13 +29,15 @@ var ErrUserAlreadyAccepted = errors.New("user already accepted")
 
 func New(limit, perMatch, ratingRange int) *Queue {
 	return &Queue{
-		data:        map[uint64]queue.UserData{},
-		limit:       limit,
-		matchID:     uint64(0),
-		perMatch:    perMatch,
-		ratingRange: ratingRange,
-		groups:      map[uint64]map[uint64]struct{}{},
-		foundCh:     make(chan queue.Match),
+		data:          map[uint64]queue.UserData{},
+		limit:         limit,
+		matchID:       uint64(0),
+		perMatch:      perMatch,
+		ratingRange:   ratingRange,
+		groups:        map[uint64]map[uint64]struct{}{},
+		foundCh:       make(chan queue.Match),
+		acceptTimeout: time.Second * 10,
+		groupTimers:   map[uint64]*time.Timer{},
 	}
 }
 
@@ -143,7 +148,24 @@ func (q *Queue) Decline(userID, matchID uint64) error {
 		setQueueStateInQueue(&userData, queue.QueueStateInQueueData{})
 		userData.AcceptStatusChannel = nil
 		q.data[k] = userData
+
+		userData.JoinStatusChannel <- queue.JoinStatus{
+			State: queue.JoinStateEntered,
+			Data:  queue.JoinStateEnteredData{},
+		}
 	}
+
+	userData.JoinStatusChannel <- queue.JoinStatus{
+		State: queue.JoinStateLeft,
+		Data:  queue.JoinStateLeftData{},
+	}
+	close(userData.JoinStatusChannel)
+
+	timer, ok := q.groupTimers[matchID]
+	if ok {
+		timer.Stop()
+	}
+	delete(q.groupTimers, matchID)
 	delete(q.groups, matchID)
 	delete(q.data, userID)
 	return nil
@@ -217,6 +239,39 @@ func (q *Queue) searchMatch(userID uint64) {
 		})
 		q.data[k] = userData
 	}
+	q.groupTimers[matchID] = time.AfterFunc(q.acceptTimeout, func() {
+		q.Lock()
+		defer q.Unlock()
+
+		usersInMatch := q.groups[matchID]
+		for k := range usersInMatch {
+			userData := q.data[k]
+			if userData.AcceptStatusChannel != nil {
+				userData.AcceptStatusChannel <- queue.AcceptStatus{
+					State: queue.AcceptStateExpired,
+					Data:  queue.AcceptStateExpiredData{},
+				}
+				close(userData.AcceptStatusChannel)
+				setQueueStateInQueue(&userData, queue.QueueStateInQueueData{})
+				userData.AcceptStatusChannel = nil
+				q.data[k] = userData
+				userData.JoinStatusChannel <- queue.JoinStatus{
+					State: queue.JoinStateEntered,
+					Data:  queue.JoinStateEnteredData{},
+				}
+			} else {
+				//no reply before timeout
+				userData.JoinStatusChannel <- queue.JoinStatus{
+					State: queue.JoinStateLeft,
+					Data:  queue.JoinStateLeftData{},
+				}
+				close(userData.JoinStatusChannel)
+				delete(q.data, k)
+			}
+		}
+		delete(q.groupTimers, matchID)
+		delete(q.groups, matchID)
+	})
 	q.groups[matchID] = suitableUsers
 }
 

@@ -1,7 +1,5 @@
 package inmemory
 
-//need to test if all accepts
-
 import (
 	"sync"
 	"testing"
@@ -386,8 +384,14 @@ func TestDecline(t *testing.T) {
 	q := New(1000, 10, 100)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
-		<-ch
-		go func() { <-ch }()
+		go func() {
+			for {
+				_, ok := <-ch
+				if !ok {
+					return
+				}
+			}
+		}()
 	}
 	usersBefore, _ := q.All()
 	time.Sleep(time.Second * 2)
@@ -404,6 +408,72 @@ func TestDecline(t *testing.T) {
 		assert.Nil(t, usersAfter[i].AcceptStatusChannel)
 	}
 	assert.Len(t, usersAfter, len(usersBefore)-1)
+	assert.Len(t, q.groupTimers, 0)
 	assert.NotContains(t, usersAfter, uint64(1))
 	assert.NotContains(t, q.groups, uint64(1))
+}
+
+func TestGroupTimeout(t *testing.T) {
+	q := New(1000, 10, 100)
+	for i := 1; i < 11; i++ {
+		ch, _ := q.Join(uint64(i), 1000)
+		go func() {
+			for {
+				_, ok := <-ch
+				if !ok {
+					return
+				}
+			}
+		}()
+	}
+	time.Sleep(time.Second * 2)
+
+	usersBefore, _ := q.All()
+	var user1Msgs []queue.AcceptStatus
+	var wg sync.WaitGroup
+	wg.Add(1)
+	for i := 1; i < 5; i++ {
+		ch, err := q.Accept(uint64(i), 1)
+		assert.NoError(t, err)
+		go func(userID int) {
+			for {
+				msg, ok := <-ch
+				if !ok {
+					if userID == 1 {
+						wg.Done()
+					}
+					return
+				}
+				if userID == 1 {
+					user1Msgs = append(user1Msgs, msg)
+				}
+			}
+		}(i)
+	}
+	time.Sleep(time.Second * 15)
+	wg.Wait()
+
+	usersAfter, _ := q.All()
+	var i uint64
+	for i = 1; i < 5; i++ {
+		assert.Equal(t, usersBefore[i].Rating, usersAfter[i].Rating)
+		assert.Equal(t, queue.QueueStateInQueue, usersAfter[i].State)
+		assert.Equal(t, queue.QueueStateInQueueData{}, usersAfter[i].Data)
+		assert.NotNil(t, usersAfter[i].JoinStatusChannel)
+		assert.Nil(t, usersAfter[i].AcceptStatusChannel)
+	}
+	assert.Len(t, usersAfter, len(usersBefore)-6)
+	assert.Len(t, q.groupTimers, 0)
+	assert.NotContains(t, q.groups, uint64(1))
+	assert.NotContains(t, usersAfter, uint64(5))
+	assert.NotContains(t, usersAfter, uint64(6))
+	assert.NotContains(t, usersAfter, uint64(7))
+	assert.NotContains(t, usersAfter, uint64(8))
+	assert.NotContains(t, usersAfter, uint64(9))
+	assert.NotContains(t, usersAfter, uint64(10))
+	expectedExpireMsg := queue.AcceptStatus{
+		State: queue.AcceptStateExpired,
+		Data:  queue.AcceptStateExpiredData{},
+	}
+	assert.Contains(t, user1Msgs, expectedExpireMsg)
 }
