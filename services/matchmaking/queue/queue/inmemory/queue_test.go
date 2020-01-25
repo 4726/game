@@ -70,12 +70,37 @@ func TestLeave(t *testing.T) {
 	q := New(1000, 10, 100)
 	usersBefore, _ := q.All()
 	ch, _ := q.Join(1, 1000)
-	go func() { <-ch }()
+	time.Sleep(time.Second)
+	var msgs []queue.JoinStatus
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		for {
+			select {
+			case <-time.After(time.Second * 3):
+				wg.Done()
+				return
+			case msg, ok := <-ch:
+				if !ok {
+					wg.Done()
+					return
+				}
+				msgs = append(msgs, msg)
+			}
+		}
 
+	}()
 	err := q.Leave(1)
 	assert.NoError(t, err)
 	usersAfter, _ := q.All()
 	assert.Equal(t, usersBefore, usersAfter)
+	wg.Wait()
+	assert.Len(t, msgs, 2)
+	expectedMsg := queue.JoinStatus{
+		State: queue.JoinStateLeft,
+		Data:  queue.JoinStateLeftData{},
+	}
+	assert.Equal(t, expectedMsg, msgs[1])
 }
 
 func TestAcceptNotInMatch(t *testing.T) {
