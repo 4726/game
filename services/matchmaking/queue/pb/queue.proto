@@ -37,8 +37,8 @@ message AcceptQueueRequest {
 message AcceptQueueResponse {
     uint32 total_accepted = 1;
     uint32 total_needed = 2;
-    bool cancelled = 4;
-    repeated uint64 user_ids = 5;
+    bool cancelled = 3;
+    bool success = 4;
 }
 
 message DeclineQueueRequest {

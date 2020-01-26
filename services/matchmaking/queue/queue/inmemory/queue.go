@@ -27,7 +27,10 @@ var ErrQueueFull = errors.New("queue full")
 var ErrUserNotInMatch = errors.New("user is not in this match")
 var ErrUserAlreadyAccepted = errors.New("user already accepted")
 
-func New(limit, perMatch, ratingRange int) *Queue {
+func New(limit, perMatch, ratingRange int, acceptTimeout time.Duration) *Queue {
+	if ratingRange < 0 {
+		ratingRange = 0
+	}
 	return &Queue{
 		data:          map[uint64]queue.UserData{},
 		limit:         limit,
@@ -36,7 +39,7 @@ func New(limit, perMatch, ratingRange int) *Queue {
 		ratingRange:   ratingRange,
 		groups:        map[uint64]map[uint64]struct{}{},
 		foundCh:       make(chan queue.Match),
-		acceptTimeout: time.Second * 10,
+		acceptTimeout: acceptTimeout,
 		groupTimers:   map[uint64]*time.Timer{},
 	}
 }

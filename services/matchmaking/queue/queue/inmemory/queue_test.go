@@ -10,7 +10,7 @@ import (
 )
 
 func TestJoinFull(t *testing.T) {
-	q := New(1, 10, 100)
+	q := New(1, 10, 100, time.Second*20)
 	q.Join(1, 1000)
 
 	usersBefore, _ := q.All()
@@ -22,7 +22,7 @@ func TestJoinFull(t *testing.T) {
 }
 
 func TestJoinAlreadyInQueue(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	q.Join(1, 1000)
 
 	usersBefore, _ := q.All()
@@ -34,7 +34,7 @@ func TestJoinAlreadyInQueue(t *testing.T) {
 }
 
 func TestJoin(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	ch, err := q.Join(1, 1000)
 	assert.NoError(t, err)
 	expectedMsg := queue.JoinStatus{
@@ -55,7 +55,7 @@ func TestJoin(t *testing.T) {
 }
 
 func TestLeaveDoesNotExist(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	usersBefore, _ := q.All()
 
 	err := q.Leave(1)
@@ -65,7 +65,7 @@ func TestLeaveDoesNotExist(t *testing.T) {
 }
 
 func TestLeave(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	usersBefore, _ := q.All()
 	ch, _ := q.Join(1, 1000)
 	time.Sleep(time.Second)
@@ -102,7 +102,7 @@ func TestLeave(t *testing.T) {
 }
 
 func TestAcceptNotInMatch(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	usersBefore, _ := q.All()
 	_, err := q.Accept(1, 1)
 	assert.Equal(t, ErrUserNotInMatch, err)
@@ -112,7 +112,7 @@ func TestAcceptNotInMatch(t *testing.T) {
 
 //group exists but this user is not in the group
 func TestAcceptNotInMatch2(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		<-ch
@@ -128,7 +128,7 @@ func TestAcceptNotInMatch2(t *testing.T) {
 }
 
 func TestAcceptAlreadyAccepted(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		<-ch
@@ -148,7 +148,7 @@ func TestAcceptAlreadyAccepted(t *testing.T) {
 }
 
 func TestAcceptChannelMessage(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		<-ch
@@ -192,7 +192,7 @@ func TestAcceptChannelMessage(t *testing.T) {
 }
 
 func TestAccept(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		<-ch
@@ -228,7 +228,7 @@ func TestAccept(t *testing.T) {
 }
 
 func TestAcceptAllAccepted(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		go func() {
@@ -285,7 +285,7 @@ func TestAcceptAllAccepted(t *testing.T) {
 }
 
 func TestAcceptAllAcceptedLater(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		go func() {
@@ -336,7 +336,7 @@ func TestAcceptAllAcceptedLater(t *testing.T) {
 }
 
 func TestDeclineNotInMatch(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	usersBefore, _ := q.All()
 	err := q.Decline(1, 1)
 	assert.Equal(t, ErrUserNotInMatch, err)
@@ -345,7 +345,7 @@ func TestDeclineNotInMatch(t *testing.T) {
 }
 
 func TestDeclineNotInMatch2(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		<-ch
@@ -361,7 +361,7 @@ func TestDeclineNotInMatch2(t *testing.T) {
 }
 
 func TestDeclineAlreadyAccepted(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		<-ch
@@ -381,7 +381,7 @@ func TestDeclineAlreadyAccepted(t *testing.T) {
 }
 
 func TestDecline(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*20)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		go func() {
@@ -414,7 +414,7 @@ func TestDecline(t *testing.T) {
 }
 
 func TestGroupTimeout(t *testing.T) {
-	q := New(1000, 10, 100)
+	q := New(1000, 10, 100, time.Second*10)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		go func() {
