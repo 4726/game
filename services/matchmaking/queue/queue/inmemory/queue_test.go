@@ -147,6 +147,28 @@ func TestAcceptAlreadyAccepted(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
+func TestAcceptDeniedBefore(t *testing.T) {
+	q := New(1000, 10, 100, time.Second*20)
+	for i := 1; i < 11; i++ {
+		ch, _ := q.Join(uint64(i), 1000)
+		go func() {
+			for range ch {
+			}
+		}()
+	}
+	usersBefore, _ := q.All()
+	time.Sleep(time.Second * 2)
+	q.Decline(2, 1)
+	time.Sleep(time.Second * 2)
+
+	_, err := q.Accept(1, 1)
+	assert.Equal(t, ErrUserNotInMatch, err)
+	time.Sleep(time.Second * 2)
+	usersAfter, _ := q.All()
+	delete(usersBefore, 2)
+	assert.Equal(t, usersBefore, usersAfter)
+}
+
 func TestAcceptChannelMessage(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
 	for i := 1; i < 11; i++ {
@@ -229,6 +251,7 @@ func TestAccept(t *testing.T) {
 
 func TestAcceptAllAccepted(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	usersBefore, _ := q.All()
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		go func() {
@@ -236,7 +259,6 @@ func TestAcceptAllAccepted(t *testing.T) {
 			}
 		}()
 	}
-	usersBefore, _ := q.All()
 	time.Sleep(time.Second * 2)
 	for i := 2; i < 11; i++ {
 		ch, err := q.Accept(uint64(i), 1)
@@ -273,10 +295,6 @@ func TestAcceptAllAccepted(t *testing.T) {
 	assert.Equal(t, expectedFoundMsg, foundMsg)
 
 	usersAfter, _ := q.All()
-
-	for i := 1; i < 11; i++ {
-		delete(usersBefore, uint64(i))
-	}
 	assert.Equal(t, usersBefore, usersAfter)
 	assert.Empty(t, q.groups)
 	time.Sleep(time.Second)
@@ -286,6 +304,7 @@ func TestAcceptAllAccepted(t *testing.T) {
 
 func TestAcceptAllAcceptedLater(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	usersBefore, _ := q.All()
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		go func() {
@@ -333,9 +352,26 @@ func TestAcceptAllAcceptedLater(t *testing.T) {
 		},
 	}
 	assert.Contains(t, chMsgs, expectedMsg)
+
+	foundCh := q.Channel()
+	expectedUsers := map[uint64]uint64{}
+	for i := 1; i < 11; i++ {
+		expectedUsers[uint64(i)] = 1000
+	}
+	expectedFoundMsg := queue.Match{
+		Users:   expectedUsers,
+		MatchID: 1,
+	}
+	foundMsg := <-foundCh
+	assert.Equal(t, expectedFoundMsg, foundMsg)
+
+	usersAfter, _ := q.All()
+	assert.Equal(t, usersBefore, usersAfter)
+	assert.Empty(t, q.groups)
+	time.Sleep(time.Second)
 }
 
-func TestDeclineNotInMatch(t *testing.T) {
+func TestDeclineDoesNotExist(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
 	usersBefore, _ := q.All()
 	err := q.Decline(1, 1)
@@ -344,19 +380,40 @@ func TestDeclineNotInMatch(t *testing.T) {
 	assert.Equal(t, usersBefore, usersAfter)
 }
 
-func TestDeclineNotInMatch2(t *testing.T) {
+func TestDeclineMatchDoesNotExist(t *testing.T) {
+	q := New(1000, 10, 100, time.Second*20)
+	ch, _ := q.Join(1, 1000)
+	go func() { for range ch{} }()
+	time.Sleep(time.Second * 2)
+
+	usersBefore, _ := q.All()
+	err := q.Decline(1, 1)
+	assert.Equal(t, ErrUserNotInMatch, err)
+	usersAfter, _ := q.All()
+	delete(usersBefore, 1)
+	assert.Equal(t, usersBefore, usersAfter)
+}
+
+func TestDeclineNotInMatch(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
-		<-ch
-		go func() { <-ch }()
+		go func() {
+			for range ch {}
+		}()
 	}
 	time.Sleep(time.Second * 2)
-
+	ch, _ := q.Join(11, 1000)
+	go func() {
+		for range ch {
+		}
+	}()
+	time.Sleep(time.Second * 2)
 	usersBefore, _ := q.All()
 	err := q.Decline(11, 1)
 	assert.Equal(t, ErrUserNotInMatch, err)
 	usersAfter, _ := q.All()
+	delete(usersBefore, 11)
 	assert.Equal(t, usersBefore, usersAfter)
 }
 
@@ -476,4 +533,9 @@ func TestGroupTimeout(t *testing.T) {
 		Data:  queue.AcceptStateExpiredData{},
 	}
 	assert.Contains(t, user1Msgs, expectedExpireMsg)
+}
+
+func TestFoundChannelBuffered(t *testing.T) {
+	q := New(1000, 10, 100, time.Second*20)
+	assert.Equal(t, 10, cap(q.foundCh))
 }

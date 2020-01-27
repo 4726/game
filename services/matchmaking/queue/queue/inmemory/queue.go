@@ -38,7 +38,7 @@ func New(limit, perMatch, ratingRange int, acceptTimeout time.Duration) *Queue {
 		perMatch:      perMatch,
 		ratingRange:   ratingRange,
 		groups:        map[uint64]map[uint64]struct{}{},
-		foundCh:       make(chan queue.Match),
+		foundCh:       make(chan queue.Match, 10),
 		acceptTimeout: acceptTimeout,
 		groupTimers:   map[uint64]*time.Timer{},
 	}
@@ -81,28 +81,26 @@ func (q *Queue) Leave(userID uint64) error {
 	q.Lock()
 	defer q.Unlock()
 
-	userData, exists := q.data[userID]
-	if !exists {
+	userData, ok := q.data[userID]
+	if !ok {
 		return ErrDoesNotExist
 	}
-
-	userData.JoinStatusChannel <- queue.JoinStatus{
-		State: queue.JoinStateLeft,
-		Data:  queue.JoinStateLeftData{},
+	if userData.State == queue.QueueStateInGroup {
+		data := userData.Data.(queue.QueueStateInGroupData)
+		q.decline(1, data.MatchID)
+		return nil
 	}
 
-	delete(q.data, userID)
-	return nil
+	return q.leave(userID)
 }
 
 func (q *Queue) Accept(userID, matchID uint64) (<-chan queue.AcceptStatus, error) {
 	q.Lock()
 	defer q.Unlock()
 
-	usersInMatch := q.groups[matchID]
+	usersInMatch, _ := q.groups[matchID]
 	_, ok := usersInMatch[userID]
 	if !ok {
-		delete(q.data, userID)
 		return nil, ErrUserNotInMatch
 	}
 	userData := q.data[userID]
@@ -127,51 +125,7 @@ func (q *Queue) Decline(userID, matchID uint64) error {
 	q.Lock()
 	defer q.Unlock()
 
-	usersInMatch := q.groups[matchID]
-	_, ok := usersInMatch[userID]
-	if !ok {
-		delete(q.data, userID)
-		return ErrUserNotInMatch
-	}
-	userData := q.data[userID]
-	groupData := userData.Data.(queue.QueueStateInGroupData)
-	if groupData.Accepted {
-		return ErrUserAlreadyAccepted
-	}
-
-	for k := range usersInMatch {
-		userData := q.data[k]
-		if userData.AcceptStatusChannel != nil {
-			userData.AcceptStatusChannel <- queue.AcceptStatus{
-				State: queue.AcceptStateFailed,
-				Data:  queue.AcceptStateFailedData{},
-			}
-			close(userData.AcceptStatusChannel)
-		}
-		setQueueStateInQueue(&userData, queue.QueueStateInQueueData{})
-		userData.AcceptStatusChannel = nil
-		q.data[k] = userData
-
-		userData.JoinStatusChannel <- queue.JoinStatus{
-			State: queue.JoinStateEntered,
-			Data:  queue.JoinStateEnteredData{},
-		}
-	}
-
-	userData.JoinStatusChannel <- queue.JoinStatus{
-		State: queue.JoinStateLeft,
-		Data:  queue.JoinStateLeftData{},
-	}
-	close(userData.JoinStatusChannel)
-
-	timer, ok := q.groupTimers[matchID]
-	if ok {
-		timer.Stop()
-	}
-	delete(q.groupTimers, matchID)
-	delete(q.groups, matchID)
-	delete(q.data, userID)
-	return nil
+	return q.decline(userID, matchID)
 }
 
 func (q *Queue) All() (map[uint64]queue.UserData, error) {
@@ -264,12 +218,7 @@ func (q *Queue) searchMatch(userID uint64) {
 				}
 			} else {
 				//no reply before timeout
-				userData.JoinStatusChannel <- queue.JoinStatus{
-					State: queue.JoinStateLeft,
-					Data:  queue.JoinStateLeftData{},
-				}
-				close(userData.JoinStatusChannel)
-				delete(q.data, k)
+				q.leave(k)
 			}
 		}
 		delete(q.groupTimers, matchID)
@@ -307,14 +256,9 @@ func (q *Queue) sendMatchUpdate(matchID uint64) {
 					MatchID:   matchID,
 				},
 			}
-			userData.JoinStatusChannel <- queue.JoinStatus{
-				State: queue.JoinStateLeft,
-				Data:  queue.JoinStateLeftData{},
-			}
-			matchUsers[k] = userData.Rating
-			close(userData.JoinStatusChannel)
 			close(userData.AcceptStatusChannel)
-			delete(q.data, k)
+			matchUsers[k] = userData.Rating
+			q.leave(k)
 		}
 
 		q.foundCh <- queue.Match{
@@ -341,4 +285,62 @@ func (q *Queue) sendMatchUpdate(matchID uint64) {
 func (q *Queue) getMatchID() uint64 {
 	q.matchID++
 	return q.matchID
+}
+
+func (q *Queue) leave(userID uint64) error {
+	userData, ok := q.data[userID]
+	if !ok {
+		return ErrDoesNotExist
+	}
+
+	userData.JoinStatusChannel <- queue.JoinStatus{
+		State: queue.JoinStateLeft,
+		Data:  queue.JoinStateLeftData{},
+	}
+	close(userData.JoinStatusChannel)
+	delete(q.data, userID)
+	return nil
+}
+
+func (q *Queue) decline(userID, matchID uint64) error {
+	usersInMatch := q.groups[matchID]
+	_, ok := usersInMatch[userID]
+	if !ok {
+		q.leave(userID)
+		return ErrUserNotInMatch
+	}
+	userData := q.data[userID]
+	groupData := userData.Data.(queue.QueueStateInGroupData)
+	if groupData.Accepted {
+		return ErrUserAlreadyAccepted
+	}
+
+	for k := range usersInMatch {
+		userData := q.data[k]
+		if userData.AcceptStatusChannel != nil {
+			userData.AcceptStatusChannel <- queue.AcceptStatus{
+				State: queue.AcceptStateFailed,
+				Data:  queue.AcceptStateFailedData{},
+			}
+			close(userData.AcceptStatusChannel)
+		}
+		setQueueStateInQueue(&userData, queue.QueueStateInQueueData{})
+		userData.AcceptStatusChannel = nil
+		q.data[k] = userData
+
+		userData.JoinStatusChannel <- queue.JoinStatus{
+			State: queue.JoinStateEntered,
+			Data:  queue.JoinStateEnteredData{},
+		}
+		go q.searchMatch(k)
+	}
+
+	q.leave(userID)
+	timer, ok := q.groupTimers[matchID]
+	if ok {
+		timer.Stop()
+	}
+	delete(q.groupTimers, matchID)
+	delete(q.groups, matchID)
+	return nil
 }
