@@ -147,7 +147,7 @@ func TestAcceptAlreadyAccepted(t *testing.T) {
 	assert.Empty(t, ch)
 }
 
-func TestAcceptDeniedBefore(t *testing.T) {
+func TestAcceptDeclinedBefore(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
@@ -156,17 +156,50 @@ func TestAcceptDeniedBefore(t *testing.T) {
 			}
 		}()
 	}
-	usersBefore, _ := q.All()
 	time.Sleep(time.Second * 2)
 	q.Decline(2, 1)
 	time.Sleep(time.Second * 2)
 
 	_, err := q.Accept(1, 1)
 	assert.Equal(t, ErrUserNotInMatch, err)
+}
+
+func TestAcceptDeclinedAfter(t *testing.T) {
+	q := New(1000, 10, 100, time.Second*20)
+	for i := 1; i < 11; i++ {
+		ch, _ := q.Join(uint64(i), 1000)
+		go func() {
+			for range ch {
+			}
+		}()
+	}
 	time.Sleep(time.Second * 2)
-	usersAfter, _ := q.All()
-	delete(usersBefore, 2)
-	assert.Equal(t, usersBefore, usersAfter)
+	ch, err := q.Accept(1, 1)
+	assert.NoError(t, err)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	var msgs []queue.AcceptStatus
+	go func() {
+		for {
+			msg, ok := <-ch
+			if !ok {
+				wg.Done()
+				return
+			} 
+			msgs = append(msgs, msg)
+		}
+	}()
+	time.Sleep(time.Second * 2)
+
+	q.Decline(2, 1)
+	time.Sleep(time.Second * 2)
+	assert.Len(t, msgs, 2)
+	expectedMsg := queue.AcceptStatus{
+		State: queue.AcceptStateFailed,
+		Data:  queue.AcceptStateFailedData{},
+	}
+	assert.Equal(t, expectedMsg, msgs[1])
+
 }
 
 func TestAcceptChannelMessage(t *testing.T) {
@@ -383,7 +416,10 @@ func TestDeclineDoesNotExist(t *testing.T) {
 func TestDeclineMatchDoesNotExist(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
 	ch, _ := q.Join(1, 1000)
-	go func() { for range ch{} }()
+	go func() {
+		for range ch {
+		}
+	}()
 	time.Sleep(time.Second * 2)
 
 	usersBefore, _ := q.All()
@@ -399,7 +435,8 @@ func TestDeclineNotInMatch(t *testing.T) {
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		go func() {
-			for range ch {}
+			for range ch {
+			}
 		}()
 	}
 	time.Sleep(time.Second * 2)

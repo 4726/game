@@ -1,10 +1,11 @@
-package main
+package app
 
 import (
 	"context"
 	"fmt"
 	"time"
 
+	"github.com/4726/game/services/matchmaking/queue/config"
 	"github.com/4726/game/services/matchmaking/queue/pb"
 	"github.com/4726/game/services/matchmaking/queue/queue"
 	"github.com/4726/game/services/matchmaking/queue/queue/inmemory"
@@ -12,28 +13,16 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var defaultMatchAcceptTimeout = time.Second * 20
-
-type QueueService struct {
+type queueServer struct {
 	q          queue.Queue
 	queueTimes *QueueTimes
-	opts       QueueServiceOptions
 }
 
-type QueueServiceOptions struct {
-	//rating range where players can get matched with each other
-	//ex) RatingRange of 100 allows a player with 1000 rating to match with a player with 1100 rating
-	RatingRange uint64
-	//number of players in a single match
-	PlayerCount int
-}
-
-func NewQueueService(opts QueueServiceOptions) *QueueService {
-	q := inmemory.New(10000, opts.PlayerCount, int(opts.RatingRange), defaultMatchAcceptTimeout)
-	qs := &QueueService{
+func newQueueServer(cfg config.Config) *queueServer {
+	q := inmemory.New(cfg.Limit, cfg.PerMatch, int(cfg.RatingRange), time.Second*time.Duration(cfg.AcceptTimeoutSeconds))
+	qs := &queueServer{
 		q:          q,
 		queueTimes: NewQueueTimes(1000),
-		opts:       opts,
 	}
 
 	go func(matchFoundCh <-chan queue.Match) {
@@ -49,7 +38,7 @@ func NewQueueService(opts QueueServiceOptions) *QueueService {
 	return qs
 }
 
-func (s *QueueService) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServer) error {
+func (s *queueServer) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServer) error {
 	ch, err := s.q.Join(in.GetUserId(), in.GetRating())
 	if err != nil {
 		if err == inmemory.ErrQueueFull || err == inmemory.ErrAlreadyInQueue {
@@ -95,7 +84,7 @@ func (s *QueueService) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServ
 	}
 }
 
-func (s *QueueService) Leave(ctx context.Context, in *pb.LeaveQueueRequest) (*pb.LeaveQueueResponse, error) {
+func (s *queueServer) Leave(ctx context.Context, in *pb.LeaveQueueRequest) (*pb.LeaveQueueResponse, error) {
 	err := s.q.Leave(in.GetUserId())
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
@@ -106,7 +95,7 @@ func (s *QueueService) Leave(ctx context.Context, in *pb.LeaveQueueRequest) (*pb
 	}, nil
 }
 
-func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_AcceptServer) error {
+func (s *queueServer) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_AcceptServer) error {
 	ch, err := s.q.Accept(in.GetUserId(), in.GetMatchId())
 	if err != nil {
 		if err == inmemory.ErrUserNotInMatch || err == inmemory.ErrUserAlreadyAccepted {
@@ -152,7 +141,7 @@ func (s *QueueService) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Acce
 	}
 }
 
-func (s *QueueService) Decline(ctx context.Context, in *pb.DeclineQueueRequest) (*pb.DeclineQueueResponse, error) {
+func (s *queueServer) Decline(ctx context.Context, in *pb.DeclineQueueRequest) (*pb.DeclineQueueResponse, error) {
 	if err := s.q.Decline(in.GetUserId(), in.GetMatchId()); err != nil {
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
@@ -162,7 +151,7 @@ func (s *QueueService) Decline(ctx context.Context, in *pb.DeclineQueueRequest) 
 	}, nil
 }
 
-func (s *QueueService) Info(ctx context.Context, in *pb.QueueInfoRequest) (*pb.QueueInfoResponse, error) {
+func (s *queueServer) Info(ctx context.Context, in *pb.QueueInfoRequest) (*pb.QueueInfoResponse, error) {
 	usersInQueue, err := s.q.All()
 	if err != nil {
 		return nil, err

@@ -261,10 +261,16 @@ func (q *Queue) sendMatchUpdate(matchID uint64) {
 			q.leave(k)
 		}
 
-		q.foundCh <- queue.Match{
-			Users:   matchUsers,
-			MatchID: matchID,
-		}
+		go func() {
+			msg := queue.Match{
+				Users:   matchUsers,
+				MatchID: matchID,
+			}
+			select {
+			case q.foundCh <- msg:
+			case <-time.After(time.Second * 5):
+			}
+		}()
 		delete(q.groups, matchID)
 		return
 	}

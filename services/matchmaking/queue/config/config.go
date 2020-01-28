@@ -1,20 +1,14 @@
 package config
 
 import (
-	"bytes"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
-
 	"github.com/4726/game/pkg/config"
 )
 
 type Config struct {
-	Limit int
-	PerMatch int
-	RatingRange int
-	AcceptTimeoutSeconds int 
+	Limit                int
+	PerMatch             int
+	RatingRange          int
+	AcceptTimeoutSeconds int
 }
 
 const defaultLimit = 10000
@@ -25,13 +19,13 @@ const defaultAcceptTimeoutSeconds = 20
 func LoadConfig(filePath string) (Config, error) {
 	var cfg Config
 	err := config.LoadConfig(&cfg, config.ConfigOpts{
-		EnvPrefix: "queue"
+		EnvPrefix: "queue",
 		Defaults: map[string]interface{}{
-			"Limit": defaultLimit,
-			"PerMatch": defaultPerMatch,
-			"RatingRange": defaultRatingRange,
+			"Limit":                defaultLimit,
+			"PerMatch":             defaultPerMatch,
+			"RatingRange":          defaultRatingRange,
 			"AcceptTimeoutSeconds": defaultAcceptTimeoutSeconds,
-		}
+		},
 		FilePath: filePath,
 	})
 	return cfg, err
