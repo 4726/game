@@ -35,6 +35,15 @@ func newQueueServer(cfg config.Config) *queueServer {
 		}
 	}(q.Channel())
 
+	inQueueTicker := time.NewTicker(time.Minute)
+	go func(q queue.Queue) {
+		for {
+			<-inQueueTicker.C
+			total, _ := q.Len()
+			inQueueTotal.Set(float64(total))
+		}
+	}(qs.q)
+
 	return qs
 }
 
@@ -61,7 +70,6 @@ func (s *queueServer) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServe
 				SecondsToAccept: 20,
 			}
 			if err := outStream.Send(resp); err != nil {
-				s.q.Leave(in.GetUserId())
 				return err
 			}
 		case queue.JoinStateLeft:
@@ -75,7 +83,6 @@ func (s *queueServer) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServe
 				SecondsToAccept: 20,
 			}
 			if err := outStream.Send(resp); err != nil {
-				s.q.Leave(in.GetUserId())
 				return err
 			}
 		default:
@@ -152,6 +159,10 @@ func (s *queueServer) Decline(ctx context.Context, in *pb.DeclineQueueRequest) (
 }
 
 func (s *queueServer) Info(ctx context.Context, in *pb.QueueInfoRequest) (*pb.QueueInfoResponse, error) {
+	if ctx.Err() == context.Canceled {
+		return nil, status.Error(codes.Canceled, "client cancelled")
+	}
+
 	usersInQueue, err := s.q.All()
 	if err != nil {
 		return nil, err

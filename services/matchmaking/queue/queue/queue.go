@@ -7,6 +7,7 @@ type Queue interface {
 	Decline(userID, matchID uint64) error
 	All() (map[uint64]UserData, error)
 	Channel() <-chan Match
+	Len() (int, error)
 }
 
 type UserData struct {

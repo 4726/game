@@ -31,7 +31,12 @@ func newTest(t testing.TB, conf ...config.Config) *test {
 	server := grpc.NewServer()
 	var cfg config.Config
 	if len(conf) < 1 {
-		cfg = config.Config{10000, 10, 100, 20}
+		cfg = config.Config{
+			Limit: 10000, 
+			PerMatch: 10, 
+			RatingRange: 100, 
+			AcceptTimeoutSeconds: 20,
+		}
 	} else {
 		cfg = conf[0]
 	}
@@ -53,7 +58,12 @@ func (te *test) teardown() {
 }
 
 func TestServiceJoinQueueFull(t *testing.T) {
-	te := newTest(t, config.Config{5, 10, 100, 20})
+	te := newTest(t, config.Config{
+		Limit: 5, 
+		PerMatch: 10, 
+		RatingRange: 100, 
+		AcceptTimeoutSeconds: 20,
+	})
 	defer te.teardown()
 
 	for i := 1; i < 6; i++ {
@@ -462,7 +472,12 @@ func TestServiceAcceptOneDeniedAfter(t *testing.T) {
 }
 
 func TestServiceAcceptTimeout(t *testing.T) {
-	te := newTest(t, config.Config{10000, 10, 100, 5})
+	te := newTest(t, config.Config{
+		Limit: 10000, 
+		PerMatch: 10, 
+		RatingRange: 100, 
+		AcceptTimeoutSeconds: 5,
+	})
 	defer te.teardown()
 
 	for i := 1; i < 11; i++ {

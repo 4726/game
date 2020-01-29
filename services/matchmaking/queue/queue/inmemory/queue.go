@@ -144,6 +144,14 @@ func (q *Queue) Channel() <-chan queue.Match {
 	return q.foundCh
 }
 
+func (q *Queue) Len() (int, error) {
+	q.Lock()
+	defer q.Unlock()
+
+	return len(q.data), nil
+}
+
+
 func setQueueStateInQueue(userData *queue.UserData, data queue.QueueStateInQueueData) {
 	userData.State = queue.QueueStateInQueue
 	userData.Data = data

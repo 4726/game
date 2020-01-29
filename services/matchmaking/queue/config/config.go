@@ -9,6 +9,12 @@ type Config struct {
 	PerMatch             int
 	RatingRange          int
 	AcceptTimeoutSeconds int
+	Metrics MetricsConfig
+}
+
+type MetricsConfig struct {
+	Port int
+	Route string
 }
 
 const defaultLimit = 10000
@@ -25,6 +31,8 @@ func LoadConfig(filePath string) (Config, error) {
 			"PerMatch":             defaultPerMatch,
 			"RatingRange":          defaultRatingRange,
 			"AcceptTimeoutSeconds": defaultAcceptTimeoutSeconds,
+			"Metrics.Port": 14001,
+			"Metrics.Route": "/metrics",
 		},
 		FilePath: filePath,
 	})

@@ -7,3 +7,5 @@ nsq:
   channel: channel
 max_match_responses: 100
 empty: null
+nested:
+  number: null

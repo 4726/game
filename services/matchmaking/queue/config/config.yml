@@ -2,3 +2,6 @@ limit: 10000
 per_match: 10
 rating_range: 100
 accept_timeout_Seconds: 20
+metrics:
+  port: 14001
+  route: "/metrics"
