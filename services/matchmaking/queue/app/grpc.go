@@ -2,27 +2,28 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/4726/game/services/matchmaking/queue/config"
 	"github.com/4726/game/services/matchmaking/queue/pb"
 	"github.com/4726/game/services/matchmaking/queue/queue"
-	"github.com/4726/game/services/matchmaking/queue/queue/inmemory"
+	"github.com/4726/game/services/matchmaking/queue/queue/memory"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
+//queueServer implements the grpc server
 type queueServer struct {
 	q          queue.Queue
-	queueTimes *QueueTimes
+	queueTimes *queueTimes
 }
 
 func newQueueServer(cfg config.Config) *queueServer {
-	q := inmemory.New(cfg.Limit, cfg.PerMatch, int(cfg.RatingRange), time.Second*time.Duration(cfg.AcceptTimeoutSeconds))
+	q := memory.New(cfg.Limit, cfg.PerMatch, int(cfg.RatingRange), time.Second*time.Duration(cfg.AcceptTimeoutSeconds))
 	qs := &queueServer{
 		q:          q,
-		queueTimes: NewQueueTimes(1000),
+		queueTimes: newQueueTimes(1000),
 	}
 
 	go func(matchFoundCh <-chan queue.Match) {
@@ -31,7 +32,10 @@ func newQueueServer(cfg config.Config) *queueServer {
 			if !ok {
 				return
 			}
-			fmt.Println("new match started: ", msg.MatchID)
+			logEntry.WithFields(logrus.Fields{
+				"match_id": msg.MatchID,
+				"users":   msg.Users,
+			}).Info("new match started")
 		}
 	}(q.Channel())
 
@@ -50,7 +54,7 @@ func newQueueServer(cfg config.Config) *queueServer {
 func (s *queueServer) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServer) error {
 	ch, err := s.q.Join(in.GetUserId(), in.GetRating())
 	if err != nil {
-		if err == inmemory.ErrQueueFull || err == inmemory.ErrAlreadyInQueue {
+		if err == memory.ErrQueueFull || err == memory.ErrAlreadyInQueue {
 			return status.Error(codes.FailedPrecondition, err.Error())
 		}
 		return status.Error(codes.Internal, err.Error())
@@ -105,7 +109,7 @@ func (s *queueServer) Leave(ctx context.Context, in *pb.LeaveQueueRequest) (*pb.
 func (s *queueServer) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_AcceptServer) error {
 	ch, err := s.q.Accept(in.GetUserId(), in.GetMatchId())
 	if err != nil {
-		if err == inmemory.ErrUserNotInMatch || err == inmemory.ErrUserAlreadyAccepted {
+		if err == memory.ErrUserNotInMatch || err == memory.ErrUserAlreadyAccepted {
 			return status.Error(codes.FailedPrecondition, err.Error())
 		}
 		return status.Error(codes.Internal, err.Error())

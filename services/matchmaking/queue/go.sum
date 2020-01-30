@@ -2,6 +2,7 @@ cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMT
 github.com/4726/game v0.0.0-20200125230109-d31358e9d889 h1:hs1eYFMRFbQ+yuaeKPSWjMXWL+PgcJjlS80vsF6WI/U=
 github.com/4726/game v0.0.0-20200127233658-d8b801fe372c h1:ug0ySz3nfcVQI15NGAxl1JZK3v8An6lZl1b2+mgdXM0=
 github.com/4726/game v0.0.0-20200127233658-d8b801fe372c/go.mod h1:bE0S9wrgnM9sglSmKMfvLRnKHQyclfHrDIYq7hwacKM=
+github.com/4726/game v0.0.0-20200130203924-eaeae99e7b41 h1:nz8K7XLesQubhmYeCxY8t99bRXc8zL/y1Pnd7JsHyzk=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=

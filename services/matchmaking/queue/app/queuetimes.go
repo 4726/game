@@ -6,28 +6,28 @@ import (
 	"time"
 )
 
-type QueueDuration struct {
+type queueDuration struct {
 	Rating   uint64
 	Duration time.Duration
 }
 
-type QueueTimes struct {
+type queueTimes struct {
 	sync.Mutex
-	times []QueueDuration
+	times []queueDuration
 	limit int
 }
 
-func NewQueueTimes(limit int) *QueueTimes {
+func newQueueTimes(limit int) *queueTimes {
 	if limit < 1 {
 		limit = 1
 	}
-	return &QueueTimes{
-		times: []QueueDuration{},
+	return &queueTimes{
+		times: []queueDuration{},
 		limit: limit,
 	}
 }
 
-func (qt *QueueTimes) Add(qd QueueDuration) {
+func (qt *queueTimes) Add(qd queueDuration) {
 	qt.Lock()
 	defer qt.Unlock()
 
@@ -37,7 +37,7 @@ func (qt *QueueTimes) Add(qd QueueDuration) {
 	}
 }
 
-func (qt *QueueTimes) EstimatedWaitTime(rating, ratingRange uint64) time.Duration {
+func (qt *queueTimes) EstimatedWaitTime(rating, ratingRange uint64) time.Duration {
 	qt.Lock()
 	defer qt.Unlock()
 

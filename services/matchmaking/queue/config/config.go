@@ -5,6 +5,7 @@ import (
 )
 
 type Config struct {
+	Port int
 	Limit                int
 	PerMatch             int
 	RatingRange          int
@@ -21,12 +22,14 @@ const defaultLimit = 10000
 const defaultPerMatch = 10
 const defaultRatingRange = 100
 const defaultAcceptTimeoutSeconds = 20
+const defaultPort = 14000
 
 func LoadConfig(filePath string) (Config, error) {
 	var cfg Config
 	err := config.LoadConfig(&cfg, config.ConfigOpts{
 		EnvPrefix: "queue",
 		Defaults: map[string]interface{}{
+			"Port": defaultPort,
 			"Limit":                defaultLimit,
 			"PerMatch":             defaultPerMatch,
 			"RatingRange":          defaultRatingRange,

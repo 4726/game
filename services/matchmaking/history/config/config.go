@@ -15,6 +15,7 @@ type Config struct {
 	DB                DBConfig
 	NSQ               NSQConfig
 	MaxMatchResponses uint32
+	Port int
 }
 
 type DBConfig struct {
@@ -26,12 +27,16 @@ type NSQConfig struct {
 }
 
 const defaultMaxMatchResponses = 100
+const defaultPort = 14000
 
 func LoadConfig(filePath string) (Config, error) {
 	var cfg Config
 	err := config.LoadConfig(&cfg, config.ConfigOpts{
 		EnvPrefix: "history"
-		Defaults: map[string]interface{}{"MaxMatchResponses", defaultMaxMatchResponses}
+		Defaults: map[string]interface{}{
+			"MaxMatchResponses", defaultMaxMatchResponses,
+			"Port": defaultPort,
+		}
 		FilePath: filePath,
 	})
 	return cfg, err

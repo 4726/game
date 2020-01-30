@@ -21,11 +21,6 @@ func main() {
 	flag.StringVar(&configPath, "c", "", "Path to config file")
 	flag.Parse()
 
-	lis, err := net.Listen("tcp", ":14000")
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
 		log.Fatal(err)
@@ -51,3 +46,5 @@ func main() {
 		log.Fatal(sig.String())
 	}
 }
+
+

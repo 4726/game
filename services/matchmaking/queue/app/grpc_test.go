@@ -9,7 +9,7 @@ import (
 	"github.com/4726/game/services/matchmaking/queue/config"
 	"github.com/4726/game/services/matchmaking/queue/pb"
 	"github.com/4726/game/services/matchmaking/queue/queue"
-	"github.com/4726/game/services/matchmaking/queue/queue/inmemory"
+	"github.com/4726/game/services/matchmaking/queue/queue/memory"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -32,9 +32,9 @@ func newTest(t testing.TB, conf ...config.Config) *test {
 	var cfg config.Config
 	if len(conf) < 1 {
 		cfg = config.Config{
-			Limit: 10000, 
-			PerMatch: 10, 
-			RatingRange: 100, 
+			Limit:                10000,
+			PerMatch:             10,
+			RatingRange:          100,
 			AcceptTimeoutSeconds: 20,
 		}
 	} else {
@@ -59,9 +59,9 @@ func (te *test) teardown() {
 
 func TestServiceJoinQueueFull(t *testing.T) {
 	te := newTest(t, config.Config{
-		Limit: 5, 
-		PerMatch: 10, 
-		RatingRange: 100, 
+		Limit:                5,
+		PerMatch:             10,
+		RatingRange:          100,
 		AcceptTimeoutSeconds: 20,
 	})
 	defer te.teardown()
@@ -81,7 +81,7 @@ func TestServiceJoinQueueFull(t *testing.T) {
 	outStream, err := te.c.Join(context.Background(), in)
 	assert.NoError(t, err)
 	_, err = outStream.Recv()
-	expectedErr := status.Error(codes.FailedPrecondition, inmemory.ErrQueueFull.Error())
+	expectedErr := status.Error(codes.FailedPrecondition, memory.ErrQueueFull.Error())
 	assert.Equal(t, expectedErr, err)
 	assert.False(t, testIsInQueue(te, in.GetUserId()))
 }
@@ -99,7 +99,7 @@ func TestServiceJoinAlreadyInQueue(t *testing.T) {
 	outStream, err := te.c.Join(context.Background(), in)
 	assert.NoError(t, err)
 	_, err = outStream.Recv()
-	expectedErr := status.Error(codes.FailedPrecondition, inmemory.ErrAlreadyInQueue.Error())
+	expectedErr := status.Error(codes.FailedPrecondition, memory.ErrAlreadyInQueue.Error())
 	assert.Equal(t, expectedErr, err)
 	assert.True(t, testIsInQueue(te, in.GetUserId()))
 }
@@ -217,7 +217,7 @@ func TestServiceLeaveNotInQueue(t *testing.T) {
 		UserId: 1,
 	}
 	_, err := te.c.Leave(context.Background(), in)
-	expectedErr := status.Error(codes.FailedPrecondition, inmemory.ErrDoesNotExist.Error())
+	expectedErr := status.Error(codes.FailedPrecondition, memory.ErrDoesNotExist.Error())
 	assert.Equal(t, expectedErr, err)
 	time.Sleep(time.Second * 2)
 	assert.False(t, testIsInQueue(te, in.GetUserId()))
@@ -257,7 +257,7 @@ func TestServiceAcceptMatchDoesNotExist(t *testing.T) {
 	outStream, err := te.c.Accept(context.Background(), in)
 	assert.NoError(t, err)
 	_, err = outStream.Recv()
-	expectedErr := status.Error(codes.FailedPrecondition, inmemory.ErrUserNotInMatch.Error())
+	expectedErr := status.Error(codes.FailedPrecondition, memory.ErrUserNotInMatch.Error())
 	assert.Equal(t, expectedErr, err)
 	time.Sleep(time.Second * 2)
 	assert.False(t, testIsInQueue(te, in.GetUserId()))
@@ -284,7 +284,7 @@ func TestServiceAcceptNotInMatch(t *testing.T) {
 	outStream, err := te.c.Accept(context.Background(), in)
 	assert.NoError(t, err)
 	_, err = outStream.Recv()
-	expectedErr := status.Error(codes.FailedPrecondition, inmemory.ErrUserNotInMatch.Error())
+	expectedErr := status.Error(codes.FailedPrecondition, memory.ErrUserNotInMatch.Error())
 	assert.Equal(t, expectedErr, err)
 	time.Sleep(time.Second * 2)
 	assert.False(t, testIsInQueue(te, in.GetUserId()))
@@ -421,7 +421,7 @@ func TestServiceAcceptOneDeniedBefore(t *testing.T) {
 	outStream, err := te.c.Accept(context.Background(), in)
 	assert.NoError(t, err)
 	_, err = outStream.Recv()
-	expectedErr := status.Error(codes.FailedPrecondition, inmemory.ErrUserNotInMatch.Error())
+	expectedErr := status.Error(codes.FailedPrecondition, memory.ErrUserNotInMatch.Error())
 	assert.Equal(t, expectedErr, err)
 	time.Sleep(time.Second * 2)
 	assert.True(t, testIsInQueue(te, in.GetUserId()))
@@ -473,9 +473,9 @@ func TestServiceAcceptOneDeniedAfter(t *testing.T) {
 
 func TestServiceAcceptTimeout(t *testing.T) {
 	te := newTest(t, config.Config{
-		Limit: 10000, 
-		PerMatch: 10, 
-		RatingRange: 100, 
+		Limit:                10000,
+		PerMatch:             10,
+		RatingRange:          100,
 		AcceptTimeoutSeconds: 5,
 	})
 	defer te.teardown()
@@ -502,7 +502,7 @@ func TestServiceAcceptTimeout(t *testing.T) {
 	outStream, err := te.c.Accept(context.Background(), in)
 	assert.NoError(t, err)
 	_, err = outStream.Recv()
-	expectedErr := status.Error(codes.FailedPrecondition, inmemory.ErrUserNotInMatch.Error())
+	expectedErr := status.Error(codes.FailedPrecondition, memory.ErrUserNotInMatch.Error())
 	assert.Equal(t, expectedErr, err)
 	time.Sleep(time.Second * 2)
 	assert.False(t, testIsInQueue(te, in.GetUserId()))
@@ -516,7 +516,7 @@ func TestServiceDeclineMatchDoesNotExist(t *testing.T) {
 		MatchId: 1,
 	}
 	_, err := te.c.Decline(context.Background(), in)
-	expectedErr := status.Error(codes.FailedPrecondition, inmemory.ErrUserNotInMatch.Error())
+	expectedErr := status.Error(codes.FailedPrecondition, memory.ErrUserNotInMatch.Error())
 	assert.Equal(t, expectedErr, err)
 	time.Sleep(time.Second * 2)
 	assert.False(t, testIsInQueue(te, in.GetUserId()))
@@ -544,7 +544,7 @@ func TestServiceDeclineNotInMatch(t *testing.T) {
 		MatchId: 1,
 	}
 	_, err := te.c.Decline(context.Background(), in)
-	expectedErr := status.Error(codes.FailedPrecondition, inmemory.ErrUserNotInMatch.Error())
+	expectedErr := status.Error(codes.FailedPrecondition, memory.ErrUserNotInMatch.Error())
 	assert.Equal(t, expectedErr, err)
 	time.Sleep(time.Second * 2)
 	assert.False(t, testIsInQueue(te, in.GetUserId()))

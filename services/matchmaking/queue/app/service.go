@@ -10,27 +10,28 @@ import (
 
 	"github.com/4726/game/services/matchmaking/queue/config"
 	"github.com/4726/game/services/matchmaking/queue/pb"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 )
 
 type Service struct {
-	cfg        config.Config
-	qs         *queueServer
-	grpcServer *grpc.Server
+	cfg           config.Config
+	qs            *queueServer
+	grpcServer    *grpc.Server
 	metricsServer *http.Server
 }
 
+//NewService returns a new Service
 func NewService(cfg config.Config) *Service {
 	return &Service{cfg, nil, nil, nil}
 }
 
-//Run runs the service and blocks until an error occurs
+//Run runs the grpc server and the metrics server, blocks until an error occurs
 func (s *Service) Run() error {
-	lis, err := net.Listen("tcp", ":14000")
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", s.cfg.Port))
 	if err != nil {
 		log.Fatal(err)
 	}

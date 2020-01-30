@@ -23,7 +23,7 @@ func NewService(cfg config.Config) *Service {
 
 //Run runs the service and blocks until an error occurs
 func (s *Service) Run() error {
-	lis, err := net.Listen("tcp", ":14000")
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", s.cfg.Port))
 	if err != nil {
 		log.Fatal(err)
 	}

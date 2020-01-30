@@ -1,4 +1,4 @@
-package inmemory
+package memory
 
 import (
 	"errors"
@@ -8,6 +8,7 @@ import (
 	"github.com/4726/game/services/matchmaking/queue/queue"
 )
 
+//Queue implements a queue.Queue in memory
 type Queue struct {
 	sync.Mutex
 	data          map[uint64]queue.UserData
@@ -21,12 +22,15 @@ type Queue struct {
 	groupTimers   map[uint64]*time.Timer
 }
 
-var ErrAlreadyInQueue = errors.New("user already in queue")
-var ErrDoesNotExist = errors.New("does not exist")
-var ErrQueueFull = errors.New("queue full")
-var ErrUserNotInMatch = errors.New("user is not in this match")
-var ErrUserAlreadyAccepted = errors.New("user already accepted")
+var (
+	ErrAlreadyInQueue = errors.New("user already in queue")
+	ErrDoesNotExist = errors.New("does not exist")
+	ErrQueueFull = errors.New("queue full")
+	ErrUserNotInMatch = errors.New("user is not in this match")
+	ErrUserAlreadyAccepted = errors.New("user already accepted")
+)
 
+//New returns a new memory queue
 func New(limit, perMatch, ratingRange int, acceptTimeout time.Duration) *Queue {
 	if ratingRange < 0 {
 		ratingRange = 0
@@ -44,6 +48,7 @@ func New(limit, perMatch, ratingRange int, acceptTimeout time.Duration) *Queue {
 	}
 }
 
+//Join adds a user into the queue and returns a channel with the user's queue status updates
 func (q *Queue) Join(userID, rating uint64) (<-chan queue.JoinStatus, error) {
 	q.Lock()
 	defer q.Unlock()
@@ -77,6 +82,7 @@ func (q *Queue) Join(userID, rating uint64) (<-chan queue.JoinStatus, error) {
 	return joinStatusChannel, nil
 }
 
+//Leave removes a user from the queue
 func (q *Queue) Leave(userID uint64) error {
 	q.Lock()
 	defer q.Unlock()
@@ -94,6 +100,7 @@ func (q *Queue) Leave(userID uint64) error {
 	return q.leave(userID)
 }
 
+//Accept accepts the group invite and returns a channel with group status updates
 func (q *Queue) Accept(userID, matchID uint64) (<-chan queue.AcceptStatus, error) {
 	q.Lock()
 	defer q.Unlock()
@@ -121,6 +128,7 @@ func (q *Queue) Accept(userID, matchID uint64) (<-chan queue.AcceptStatus, error
 	return ch, nil
 }
 
+//Decline declines the group invite
 func (q *Queue) Decline(userID, matchID uint64) error {
 	q.Lock()
 	defer q.Unlock()
@@ -128,6 +136,7 @@ func (q *Queue) Decline(userID, matchID uint64) error {
 	return q.decline(userID, matchID)
 }
 
+//All returns a map of the users currently in the queue. Can be copied
 func (q *Queue) All() (map[uint64]queue.UserData, error) {
 	q.Lock()
 	defer q.Unlock()
@@ -140,10 +149,12 @@ func (q *Queue) All() (map[uint64]queue.UserData, error) {
 	return m, nil
 }
 
+//Channel returns a channel with updates of groups found
 func (q *Queue) Channel() <-chan queue.Match {
 	return q.foundCh
 }
 
+//Len returns the amount of users in the queue
 func (q *Queue) Len() (int, error) {
 	q.Lock()
 	defer q.Unlock()
