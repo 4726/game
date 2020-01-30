@@ -151,7 +151,6 @@ func (q *Queue) Len() (int, error) {
 	return len(q.data), nil
 }
 
-
 func setQueueStateInQueue(userData *queue.UserData, data queue.QueueStateInQueueData) {
 	userData.State = queue.QueueStateInQueue
 	userData.Data = data

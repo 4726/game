@@ -9,8 +9,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func teardown(t testing.TB, q *Queue) {
+	for _, v := range q.groupTimers {
+		v.Stop()
+	}
+}
+
 func TestJoinFull(t *testing.T) {
 	q := New(1, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	q.Join(1, 1000)
 
 	usersBefore, _ := q.All()
@@ -23,6 +30,7 @@ func TestJoinFull(t *testing.T) {
 
 func TestJoinAlreadyInQueue(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	q.Join(1, 1000)
 
 	usersBefore, _ := q.All()
@@ -35,6 +43,7 @@ func TestJoinAlreadyInQueue(t *testing.T) {
 
 func TestJoin(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	ch, err := q.Join(1, 1000)
 	assert.NoError(t, err)
 	expectedMsg := queue.JoinStatus{
@@ -56,6 +65,7 @@ func TestJoin(t *testing.T) {
 
 func TestLeaveDoesNotExist(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	usersBefore, _ := q.All()
 
 	err := q.Leave(1)
@@ -66,6 +76,7 @@ func TestLeaveDoesNotExist(t *testing.T) {
 
 func TestLeave(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	usersBefore, _ := q.All()
 	ch, _ := q.Join(1, 1000)
 	time.Sleep(time.Second)
@@ -103,6 +114,7 @@ func TestLeave(t *testing.T) {
 
 func TestAcceptNotInMatch(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	usersBefore, _ := q.All()
 	_, err := q.Accept(1, 1)
 	assert.Equal(t, ErrUserNotInMatch, err)
@@ -113,6 +125,7 @@ func TestAcceptNotInMatch(t *testing.T) {
 //group exists but this user is not in the group
 func TestAcceptNotInMatch2(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		<-ch
@@ -129,6 +142,7 @@ func TestAcceptNotInMatch2(t *testing.T) {
 
 func TestAcceptAlreadyAccepted(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		<-ch
@@ -149,6 +163,7 @@ func TestAcceptAlreadyAccepted(t *testing.T) {
 
 func TestAcceptDeclinedBefore(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		go func() {
@@ -166,6 +181,7 @@ func TestAcceptDeclinedBefore(t *testing.T) {
 
 func TestAcceptDeclinedAfter(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		go func() {
@@ -185,14 +201,14 @@ func TestAcceptDeclinedAfter(t *testing.T) {
 			if !ok {
 				wg.Done()
 				return
-			} 
+			}
 			msgs = append(msgs, msg)
 		}
 	}()
 	time.Sleep(time.Second * 2)
 
 	q.Decline(2, 1)
-	time.Sleep(time.Second * 2)
+	wg.Wait()
 	assert.Len(t, msgs, 2)
 	expectedMsg := queue.AcceptStatus{
 		State: queue.AcceptStateFailed,
@@ -204,6 +220,7 @@ func TestAcceptDeclinedAfter(t *testing.T) {
 
 func TestAcceptChannelMessage(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		<-ch
@@ -248,6 +265,7 @@ func TestAcceptChannelMessage(t *testing.T) {
 
 func TestAccept(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		<-ch
@@ -284,6 +302,7 @@ func TestAccept(t *testing.T) {
 
 func TestAcceptAllAccepted(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	usersBefore, _ := q.All()
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
@@ -337,6 +356,7 @@ func TestAcceptAllAccepted(t *testing.T) {
 
 func TestAcceptAllAcceptedLater(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	usersBefore, _ := q.All()
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
@@ -406,6 +426,7 @@ func TestAcceptAllAcceptedLater(t *testing.T) {
 
 func TestDeclineDoesNotExist(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	usersBefore, _ := q.All()
 	err := q.Decline(1, 1)
 	assert.Equal(t, ErrUserNotInMatch, err)
@@ -415,6 +436,7 @@ func TestDeclineDoesNotExist(t *testing.T) {
 
 func TestDeclineMatchDoesNotExist(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	ch, _ := q.Join(1, 1000)
 	go func() {
 		for range ch {
@@ -432,6 +454,7 @@ func TestDeclineMatchDoesNotExist(t *testing.T) {
 
 func TestDeclineNotInMatch(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		go func() {
@@ -456,6 +479,7 @@ func TestDeclineNotInMatch(t *testing.T) {
 
 func TestDeclineAlreadyAccepted(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		<-ch
@@ -476,6 +500,7 @@ func TestDeclineAlreadyAccepted(t *testing.T) {
 
 func TestDecline(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		go func() {
@@ -509,6 +534,7 @@ func TestDecline(t *testing.T) {
 
 func TestGroupTimeout(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*10)
+	defer teardown(t, q)
 	for i := 1; i < 11; i++ {
 		ch, _ := q.Join(uint64(i), 1000)
 		go func() {
@@ -574,5 +600,6 @@ func TestGroupTimeout(t *testing.T) {
 
 func TestFoundChannelBuffered(t *testing.T) {
 	q := New(1000, 10, 100, time.Second*20)
+	defer teardown(t, q)
 	assert.Equal(t, 10, cap(q.foundCh))
 }
