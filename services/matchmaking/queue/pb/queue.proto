@@ -7,6 +7,7 @@ service Queue {
     rpc Accept(AcceptQueueRequest) returns (stream AcceptQueueResponse);
     rpc Decline(DeclineQueueRequest) returns (DeclineQueueResponse);
     rpc Info(QueueInfoRequest) returns (QueueInfoResponse);
+    rpc Listen(ListenQueueRequest) returns (stream ListenQueueResponse);
 }
 
 message JoinQueueRequest {
@@ -58,4 +59,18 @@ message QueueInfoRequest {
 message QueueInfoResponse {
     uint32 seconds_estimated = 1;
     uint32 user_count = 2;
+}
+
+message ListenQueueRequest {
+
+}
+
+message ListenQueueResponse {
+    repeated QueueUser user = 1;
+    uint64 match_id = 2;
+}
+
+message QueueUser {
+    uint64 user_id = 1;
+    uint64 rating = 2;
 }

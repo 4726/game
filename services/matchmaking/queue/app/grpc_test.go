@@ -605,6 +605,46 @@ func TestServiceInfo(t *testing.T) {
 	assert.Equal(t, expectedResp, resp)
 }
 
+func TestServiceListen(t *testing.T) {
+	te := newTest(t)
+	defer te.teardown()
+	outStream, err := te.c.Listen(context.Background(), &pb.ListenQueueRequest{})
+	assert.NoError(t, err)
+	for i := 1; i < 11; i++ {
+		if i == 10 {
+			time.Sleep(time.Second * 2)
+		}
+		in := &pb.JoinQueueRequest{
+			UserId: uint64(i),
+			Rating: 1000,
+		}
+		_, err := te.c.Join(context.Background(), in)
+		assert.NoError(t, err)
+	}
+	time.Sleep(time.Second * 2)
+	for i := 1; i < 11; i++ {
+		in := &pb.AcceptQueueRequest{
+			UserId:  uint64(i),
+			MatchId: 1,
+		}
+		_, err := te.c.Accept(context.Background(), in)
+		assert.NoError(t, err)
+	}
+	msg, err := outStream.Recv()
+	assert.NoError(t, err)
+	var expectedUsers []*pb.QueueUser
+	for i := 1; i < 11; i++ {
+		expectedUser := &pb.QueueUser{
+			UserId: uint64(i),
+			Rating: 1000,
+		}
+		expectedUsers = append(expectedUsers, expectedUser)
+	}
+	assert.ElementsMatch(t, expectedUsers, msg.User)
+	assert.Equal(t, uint64(1), msg.MatchId)
+	assertEmptyRecv(t, outStream)
+}
+
 func testIsInQueue(te *test, userID uint64) bool {
 	all, _ := te.qs.q.All()
 	userData, ok := all[userID]

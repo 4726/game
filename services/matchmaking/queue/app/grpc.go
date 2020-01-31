@@ -8,7 +8,6 @@ import (
 	"github.com/4726/game/services/matchmaking/queue/pb"
 	"github.com/4726/game/services/matchmaking/queue/queue"
 	"github.com/4726/game/services/matchmaking/queue/queue/memory"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -25,19 +24,6 @@ func newQueueServer(cfg config.Config) *queueServer {
 		q:          q,
 		queueTimes: newQueueTimes(1000),
 	}
-
-	go func(matchFoundCh <-chan queue.Match) {
-		for {
-			msg, ok := <-matchFoundCh
-			if !ok {
-				return
-			}
-			logEntry.WithFields(logrus.Fields{
-				"match_id": msg.MatchID,
-				"users":   msg.Users,
-			}).Info("new match started")
-		}
-	}(q.Channel())
 
 	inQueueTicker := time.NewTicker(time.Minute)
 	go func(q queue.Queue) {
@@ -175,4 +161,30 @@ func (s *queueServer) Info(ctx context.Context, in *pb.QueueInfoRequest) (*pb.Qu
 		SecondsEstimated: uint32(s.queueTimes.EstimatedWaitTime(in.GetRating(), 100).Seconds()),
 		UserCount:        uint32(len(usersInQueue)),
 	}, nil
+}
+
+func (s *queueServer) Listen(in *pb.ListenQueueRequest, outStream pb.Queue_ListenServer) error {
+	ch := s.q.Channel()
+
+	for {
+		msg, ok := <-ch
+		if !ok {
+			return nil
+		}
+		var users []*pb.QueueUser
+		for k, v := range msg.Users {
+			user := &pb.QueueUser{
+				UserId: k,
+				Rating: v,
+			}
+			users = append(users, user)
+		}
+		resp := &pb.ListenQueueResponse{
+			MatchId: msg.MatchID,
+			User:    users,
+		}
+		if err := outStream.Send(resp); err != nil {
+			return err
+		}
+	}
 }
