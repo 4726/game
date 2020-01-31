@@ -5,16 +5,16 @@ import (
 	"time"
 
 	"github.com/4726/game/services/matchmaking/queue/config"
+	"github.com/4726/game/services/matchmaking/queue/engine"
+	"github.com/4726/game/services/matchmaking/queue/engine/memory"
 	"github.com/4726/game/services/matchmaking/queue/pb"
-	"github.com/4726/game/services/matchmaking/queue/queue"
-	"github.com/4726/game/services/matchmaking/queue/queue/memory"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 //queueServer implements the grpc server
 type queueServer struct {
-	q          queue.Queue
+	q          engine.Queue
 	queueTimes *queueTimes
 }
 
@@ -26,7 +26,7 @@ func newQueueServer(cfg config.Config) *queueServer {
 	}
 
 	inQueueTicker := time.NewTicker(time.Minute)
-	go func(q queue.Queue) {
+	go func(q engine.Queue) {
 		for {
 			<-inQueueTicker.C
 			total, _ := q.Len()
@@ -52,7 +52,7 @@ func (s *queueServer) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServe
 			return nil
 		}
 		switch msg.State {
-		case queue.JoinStateEntered:
+		case engine.JoinStateEntered:
 			resp := &pb.JoinQueueResponse{
 				UserId:          in.GetUserId(),
 				MatchId:         0,
@@ -62,10 +62,10 @@ func (s *queueServer) Join(in *pb.JoinQueueRequest, outStream pb.Queue_JoinServe
 			if err := outStream.Send(resp); err != nil {
 				return err
 			}
-		case queue.JoinStateLeft:
+		case engine.JoinStateLeft:
 			return nil
-		case queue.JoinStateGroupFound:
-			data := msg.Data.(queue.JoinStateGroupFoundData)
+		case engine.JoinStateGroupFound:
+			data := msg.Data.(engine.JoinStateGroupFoundData)
 			resp := &pb.JoinQueueResponse{
 				UserId:          in.GetUserId(),
 				MatchId:         data.MatchID,
@@ -107,8 +107,8 @@ func (s *queueServer) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Accep
 			return nil
 		}
 		switch msg.State {
-		case queue.AcceptStateUpdate:
-			data := msg.Data.(queue.AcceptStatusUpdateData)
+		case engine.AcceptStateUpdate:
+			data := msg.Data.(engine.AcceptStatusUpdateData)
 			resp := &pb.AcceptQueueResponse{
 				TotalAccepted: uint32(data.UsersAccepted),
 				TotalNeeded:   uint32(data.UsersNeeded),
@@ -117,17 +117,17 @@ func (s *queueServer) Accept(in *pb.AcceptQueueRequest, outStream pb.Queue_Accep
 			if err := outStream.Send(resp); err != nil {
 				return err
 			}
-		case queue.AcceptStateFailed:
+		case engine.AcceptStateFailed:
 			resp := &pb.AcceptQueueResponse{
 				Cancelled: true,
 			}
 			return outStream.Send(resp)
-		case queue.AcceptStateExpired:
+		case engine.AcceptStateExpired:
 			resp := &pb.AcceptQueueResponse{
 				Cancelled: true,
 			}
 			return outStream.Send(resp)
-		case queue.AcceptStateSuccess:
+		case engine.AcceptStateSuccess:
 			resp := &pb.AcceptQueueResponse{
 				Success: true,
 			}

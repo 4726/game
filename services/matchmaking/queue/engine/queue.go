@@ -1,4 +1,4 @@
-package queue
+package engine
 
 type Queue interface {
 	Join(userID, rating uint64) (<-chan JoinStatus, error)

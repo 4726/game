@@ -3,6 +3,7 @@ github.com/4726/game v0.0.0-20200125230109-d31358e9d889 h1:hs1eYFMRFbQ+yuaeKPSWj
 github.com/4726/game v0.0.0-20200127233658-d8b801fe372c h1:ug0ySz3nfcVQI15NGAxl1JZK3v8An6lZl1b2+mgdXM0=
 github.com/4726/game v0.0.0-20200127233658-d8b801fe372c/go.mod h1:bE0S9wrgnM9sglSmKMfvLRnKHQyclfHrDIYq7hwacKM=
 github.com/4726/game v0.0.0-20200130203924-eaeae99e7b41 h1:nz8K7XLesQubhmYeCxY8t99bRXc8zL/y1Pnd7JsHyzk=
+github.com/4726/game v0.0.0-20200131210949-34678c772402 h1:A3CMFBhqyEaf7Z0Qwdrkx0RWcKn5sGSw2pcul/EL0vU=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=

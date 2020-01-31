@@ -2,23 +2,33 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/4726/game/services/matchmaking/queue/config"
-	"github.com/4726/game/services/matchmaking/queue/pb"
-	"google.golang.org/grpc"
 	"github.com/4726/game/services/matchmaking/queue/app"
+	"github.com/4726/game/services/matchmaking/queue/config"
 )
 
 var configPath string
 
+var usage = `
+Usage: queue <command> [arguments]
+
+Commands:
+	-c, -config <file path> path to config file
+	-h, -help	prints the usage string
+`
+
 func main() {
-	flag.StringVar(&configPath, "config", "", "Path to config file")
-	flag.StringVar(&configPath, "c", "", "Path to config file")
+	flag.StringVar(&configPath, "config", "", "path to config file")
+	flag.StringVar(&configPath, "c", "", "path to config file")
+	flag.Usage = func() {
+		fmt.Printf("%s\n", usage)
+		os.Exit(0)
+	}
 	flag.Parse()
 
 	cfg, err := config.LoadConfig(configPath)
@@ -35,7 +45,7 @@ func main() {
 
 	serveCh := make(chan error, 1)
 	go func() {
-		err := server.Run()
+		err := service.Run()
 		serveCh <- err
 	}()
 
@@ -46,5 +56,3 @@ func main() {
 		log.Fatal(sig.String())
 	}
 }
-
-

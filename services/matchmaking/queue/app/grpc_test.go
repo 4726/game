@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/4726/game/services/matchmaking/queue/config"
+	"github.com/4726/game/services/matchmaking/queue/engine"
+	"github.com/4726/game/services/matchmaking/queue/engine/memory"
 	"github.com/4726/game/services/matchmaking/queue/pb"
-	"github.com/4726/game/services/matchmaking/queue/queue"
-	"github.com/4726/game/services/matchmaking/queue/queue/memory"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -50,6 +50,18 @@ func newTest(t testing.TB, conf ...config.Config) *test {
 	c := pb.NewQueueClient(conn)
 
 	return &test{server, c, lis, service}
+}
+
+func (te *test) insert10(t testing.TB) {
+	for i := 1; i < 11; i++ {
+		in := &pb.JoinQueueRequest{
+			UserId: uint64(i),
+			Rating: 1000,
+		}
+		_, err := te.c.Join(context.Background(), in)
+		assert.NoError(t, err)
+	}
+	time.Sleep(time.Second * 2)
 }
 
 func (te *test) teardown() {
@@ -267,15 +279,7 @@ func TestServiceAcceptNotInMatch(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
-	for i := 1; i < 11; i++ {
-		in := &pb.JoinQueueRequest{
-			UserId: uint64(i),
-			Rating: 1000,
-		}
-		_, err := te.c.Join(context.Background(), in)
-		assert.NoError(t, err)
-	}
-	time.Sleep(time.Second * 2)
+	te.insert10(t)
 
 	in := &pb.AcceptQueueRequest{
 		UserId:  11,
@@ -293,18 +297,7 @@ func TestServiceAcceptNotInMatch(t *testing.T) {
 func TestServiceAcceptAllAccepted(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
-	for i := 1; i < 11; i++ {
-		if i == 10 {
-			time.Sleep(time.Second * 2)
-		}
-		in := &pb.JoinQueueRequest{
-			UserId: uint64(i),
-			Rating: 1000,
-		}
-		_, err := te.c.Join(context.Background(), in)
-		assert.NoError(t, err)
-	}
-	time.Sleep(time.Second * 2)
+	te.insert10(t)
 	for i := 1; i < 10; i++ {
 		in := &pb.AcceptQueueRequest{
 			UserId:  uint64(i),
@@ -393,18 +386,7 @@ func TestServiceAcceptOneDeniedBefore(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
-	for i := 1; i < 11; i++ {
-		if i == 10 {
-			time.Sleep(time.Second * 2)
-		}
-		in := &pb.JoinQueueRequest{
-			UserId: uint64(i),
-			Rating: 1000,
-		}
-		_, err := te.c.Join(context.Background(), in)
-		assert.NoError(t, err)
-	}
-	time.Sleep(time.Second * 2)
+	te.insert10(t)
 
 	deleteIn := &pb.DeclineQueueRequest{
 		UserId:  1,
@@ -431,18 +413,7 @@ func TestServiceAcceptOneDeniedAfter(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
-	for i := 1; i < 11; i++ {
-		if i == 10 {
-			time.Sleep(time.Second * 2)
-		}
-		in := &pb.JoinQueueRequest{
-			UserId: uint64(i),
-			Rating: 1000,
-		}
-		_, err := te.c.Join(context.Background(), in)
-		assert.NoError(t, err)
-	}
-	time.Sleep(time.Second * 2)
+	te.insert10(t)
 
 	in := &pb.AcceptQueueRequest{
 		UserId:  10,
@@ -481,9 +452,6 @@ func TestServiceAcceptTimeout(t *testing.T) {
 	defer te.teardown()
 
 	for i := 1; i < 11; i++ {
-		if i == 10 {
-			time.Sleep(time.Second * 2)
-		}
 		in := &pb.JoinQueueRequest{
 			UserId: uint64(i),
 			Rating: 1000,
@@ -554,15 +522,7 @@ func TestServiceDecline(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
-	for i := 1; i < 11; i++ {
-		in := &pb.JoinQueueRequest{
-			UserId: uint64(i),
-			Rating: 1000,
-		}
-		_, err := te.c.Join(context.Background(), in)
-		assert.NoError(t, err)
-	}
-	time.Sleep(time.Second * 2)
+	te.insert10(t)
 
 	in := &pb.DeclineQueueRequest{
 		UserId:  1,
@@ -610,18 +570,7 @@ func TestServiceListen(t *testing.T) {
 	defer te.teardown()
 	outStream, err := te.c.Listen(context.Background(), &pb.ListenQueueRequest{})
 	assert.NoError(t, err)
-	for i := 1; i < 11; i++ {
-		if i == 10 {
-			time.Sleep(time.Second * 2)
-		}
-		in := &pb.JoinQueueRequest{
-			UserId: uint64(i),
-			Rating: 1000,
-		}
-		_, err := te.c.Join(context.Background(), in)
-		assert.NoError(t, err)
-	}
-	time.Sleep(time.Second * 2)
+	te.insert10(t)
 	for i := 1; i < 11; i++ {
 		in := &pb.AcceptQueueRequest{
 			UserId:  uint64(i),
@@ -651,7 +600,7 @@ func testIsInQueue(te *test, userID uint64) bool {
 	if !ok {
 		return false
 	}
-	return userData.State == queue.QueueStateInQueue
+	return userData.State == engine.QueueStateInQueue
 }
 
 func assertEmptyRecv(t testing.TB, stream grpc.ClientStream) {

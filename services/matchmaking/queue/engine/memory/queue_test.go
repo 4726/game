@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/4726/game/services/matchmaking/queue/queue"
+	"github.com/4726/game/services/matchmaking/queue/engine"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,9 +46,9 @@ func TestJoin(t *testing.T) {
 	defer teardown(t, q)
 	ch, err := q.Join(1, 1000)
 	assert.NoError(t, err)
-	expectedMsg := queue.JoinStatus{
-		State: queue.JoinStateEntered,
-		Data:  queue.JoinStateEnteredData{},
+	expectedMsg := engine.JoinStatus{
+		State: engine.JoinStateEntered,
+		Data:  engine.JoinStateEnteredData{},
 	}
 	assert.Equal(t, expectedMsg, <-ch)
 	time.Sleep(time.Second)
@@ -57,8 +57,8 @@ func TestJoin(t *testing.T) {
 	users, _ := q.All()
 	assert.Len(t, users, 1)
 	assert.Equal(t, uint64(1000), users[1].Rating)
-	assert.Equal(t, queue.QueueStateInQueue, users[1].State)
-	assert.Equal(t, queue.QueueStateInQueueData{}, users[1].Data)
+	assert.Equal(t, engine.QueueStateInQueue, users[1].State)
+	assert.Equal(t, engine.QueueStateInQueueData{}, users[1].Data)
 	assert.NotNil(t, users[1].JoinStatusChannel)
 	assert.Nil(t, users[1].AcceptStatusChannel)
 }
@@ -80,7 +80,7 @@ func TestLeave(t *testing.T) {
 	usersBefore, _ := q.All()
 	ch, _ := q.Join(1, 1000)
 	time.Sleep(time.Second)
-	var msgs []queue.JoinStatus
+	var msgs []engine.JoinStatus
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -105,9 +105,9 @@ func TestLeave(t *testing.T) {
 	assert.Equal(t, usersBefore, usersAfter)
 	wg.Wait()
 	assert.Len(t, msgs, 2)
-	expectedMsg := queue.JoinStatus{
-		State: queue.JoinStateLeft,
-		Data:  queue.JoinStateLeftData{},
+	expectedMsg := engine.JoinStatus{
+		State: engine.JoinStateLeft,
+		Data:  engine.JoinStateLeftData{},
 	}
 	assert.Equal(t, expectedMsg, msgs[1])
 }
@@ -194,7 +194,7 @@ func TestAcceptDeclinedAfter(t *testing.T) {
 	assert.NoError(t, err)
 	var wg sync.WaitGroup
 	wg.Add(1)
-	var msgs []queue.AcceptStatus
+	var msgs []engine.AcceptStatus
 	go func() {
 		for {
 			msg, ok := <-ch
@@ -210,9 +210,9 @@ func TestAcceptDeclinedAfter(t *testing.T) {
 	q.Decline(2, 1)
 	wg.Wait()
 	assert.Len(t, msgs, 2)
-	expectedMsg := queue.AcceptStatus{
-		State: queue.AcceptStateFailed,
-		Data:  queue.AcceptStateFailedData{},
+	expectedMsg := engine.AcceptStatus{
+		State: engine.AcceptStateFailed,
+		Data:  engine.AcceptStateFailedData{},
 	}
 	assert.Equal(t, expectedMsg, msgs[1])
 
@@ -228,7 +228,7 @@ func TestAcceptChannelMessage(t *testing.T) {
 	}
 	time.Sleep(time.Second * 2)
 	ch, _ := q.Accept(1, 1)
-	var msgs []queue.AcceptStatus
+	var msgs []engine.AcceptStatus
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -252,9 +252,9 @@ func TestAcceptChannelMessage(t *testing.T) {
 	<-ch2
 
 	wg.Wait()
-	expectedAcceptedMsg := queue.AcceptStatus{
-		State: queue.AcceptStateUpdate,
-		Data: queue.AcceptStatusUpdateData{
+	expectedAcceptedMsg := engine.AcceptStatus{
+		State: engine.AcceptStateUpdate,
+		Data: engine.AcceptStatusUpdateData{
 			UsersAccepted: 2,
 			UsersNeeded:   10,
 		},
@@ -275,9 +275,9 @@ func TestAccept(t *testing.T) {
 	time.Sleep(time.Second * 2)
 	ch, err := q.Accept(1, 1)
 	assert.NoError(t, err)
-	expectedMsg := queue.AcceptStatus{
-		State: queue.AcceptStateUpdate,
-		Data: queue.AcceptStatusUpdateData{
+	expectedMsg := engine.AcceptStatus{
+		State: engine.AcceptStateUpdate,
+		Data: engine.AcceptStatusUpdateData{
 			UsersAccepted: 1,
 			UsersNeeded:   10,
 		},
@@ -285,7 +285,7 @@ func TestAccept(t *testing.T) {
 	assert.Equal(t, expectedMsg, <-ch)
 
 	usersAfter, _ := q.All()
-	expectedData := usersBefore[1].Data.(queue.QueueStateInGroupData)
+	expectedData := usersBefore[1].Data.(engine.QueueStateInGroupData)
 	expectedData.Accepted = true
 	assert.Equal(t, usersBefore[1].Rating, usersAfter[1].Rating)
 	assert.Equal(t, usersBefore[1].State, usersAfter[1].State)
@@ -324,9 +324,9 @@ func TestAcceptAllAccepted(t *testing.T) {
 
 	ch, err := q.Accept(1, 1)
 	assert.NoError(t, err)
-	expectedMsg := queue.AcceptStatus{
-		State: queue.AcceptStateSuccess,
-		Data: queue.AcceptStateSuccessData{
+	expectedMsg := engine.AcceptStatus{
+		State: engine.AcceptStateSuccess,
+		Data: engine.AcceptStateSuccessData{
 			UserCount: 10,
 			MatchID:   1,
 		},
@@ -339,7 +339,7 @@ func TestAcceptAllAccepted(t *testing.T) {
 	for i := 1; i < 11; i++ {
 		expectedUsers[uint64(i)] = 1000
 	}
-	expectedFoundMsg := queue.Match{
+	expectedFoundMsg := engine.Match{
 		Users:   expectedUsers,
 		MatchID: 1,
 	}
@@ -368,7 +368,7 @@ func TestAcceptAllAcceptedLater(t *testing.T) {
 	time.Sleep(time.Second * 2)
 	ch, err := q.Accept(1, 1)
 	assert.NoError(t, err)
-	var chMsgs []queue.AcceptStatus
+	var chMsgs []engine.AcceptStatus
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -397,9 +397,9 @@ func TestAcceptAllAcceptedLater(t *testing.T) {
 	}
 	time.Sleep(time.Second * 2)
 	wg.Wait()
-	expectedMsg := queue.AcceptStatus{
-		State: queue.AcceptStateSuccess,
-		Data: queue.AcceptStateSuccessData{
+	expectedMsg := engine.AcceptStatus{
+		State: engine.AcceptStateSuccess,
+		Data: engine.AcceptStateSuccessData{
 			UserCount: 10,
 			MatchID:   1,
 		},
@@ -411,7 +411,7 @@ func TestAcceptAllAcceptedLater(t *testing.T) {
 	for i := 1; i < 11; i++ {
 		expectedUsers[uint64(i)] = 1000
 	}
-	expectedFoundMsg := queue.Match{
+	expectedFoundMsg := engine.Match{
 		Users:   expectedUsers,
 		MatchID: 1,
 	}
@@ -521,8 +521,8 @@ func TestDecline(t *testing.T) {
 	var i uint64
 	for i = 2; i < 11; i++ {
 		assert.Equal(t, usersBefore[i].Rating, usersAfter[i].Rating)
-		assert.Equal(t, queue.QueueStateInQueue, usersAfter[i].State)
-		assert.Equal(t, queue.QueueStateInQueueData{}, usersAfter[i].Data)
+		assert.Equal(t, engine.QueueStateInQueue, usersAfter[i].State)
+		assert.Equal(t, engine.QueueStateInQueueData{}, usersAfter[i].Data)
 		assert.NotNil(t, usersAfter[i].JoinStatusChannel)
 		assert.Nil(t, usersAfter[i].AcceptStatusChannel)
 	}
@@ -549,7 +549,7 @@ func TestGroupTimeout(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	usersBefore, _ := q.All()
-	var user1Msgs []queue.AcceptStatus
+	var user1Msgs []engine.AcceptStatus
 	var wg sync.WaitGroup
 	wg.Add(1)
 	for i := 1; i < 5; i++ {
@@ -577,8 +577,8 @@ func TestGroupTimeout(t *testing.T) {
 	var i uint64
 	for i = 1; i < 5; i++ {
 		assert.Equal(t, usersBefore[i].Rating, usersAfter[i].Rating)
-		assert.Equal(t, queue.QueueStateInQueue, usersAfter[i].State)
-		assert.Equal(t, queue.QueueStateInQueueData{}, usersAfter[i].Data)
+		assert.Equal(t, engine.QueueStateInQueue, usersAfter[i].State)
+		assert.Equal(t, engine.QueueStateInQueueData{}, usersAfter[i].Data)
 		assert.NotNil(t, usersAfter[i].JoinStatusChannel)
 		assert.Nil(t, usersAfter[i].AcceptStatusChannel)
 	}
@@ -591,9 +591,9 @@ func TestGroupTimeout(t *testing.T) {
 	assert.NotContains(t, usersAfter, uint64(8))
 	assert.NotContains(t, usersAfter, uint64(9))
 	assert.NotContains(t, usersAfter, uint64(10))
-	expectedExpireMsg := queue.AcceptStatus{
-		State: queue.AcceptStateExpired,
-		Data:  queue.AcceptStateExpiredData{},
+	expectedExpireMsg := engine.AcceptStatus{
+		State: engine.AcceptStateExpired,
+		Data:  engine.AcceptStateExpiredData{},
 	}
 	assert.Contains(t, user1Msgs, expectedExpireMsg)
 }

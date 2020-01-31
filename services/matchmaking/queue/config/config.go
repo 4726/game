@@ -5,16 +5,16 @@ import (
 )
 
 type Config struct {
-	Port int
+	Port                 int
 	Limit                int
 	PerMatch             int
 	RatingRange          int
 	AcceptTimeoutSeconds int
-	Metrics MetricsConfig
+	Metrics              MetricsConfig
 }
 
 type MetricsConfig struct {
-	Port int
+	Port  int
 	Route string
 }
 
@@ -29,13 +29,13 @@ func LoadConfig(filePath string) (Config, error) {
 	err := config.LoadConfig(&cfg, config.ConfigOpts{
 		EnvPrefix: "queue",
 		Defaults: map[string]interface{}{
-			"Port": defaultPort,
+			"Port":                 defaultPort,
 			"Limit":                defaultLimit,
 			"PerMatch":             defaultPerMatch,
 			"RatingRange":          defaultRatingRange,
 			"AcceptTimeoutSeconds": defaultAcceptTimeoutSeconds,
-			"Metrics.Port": 14001,
-			"Metrics.Route": "/metrics",
+			"Metrics.Port":         14001,
+			"Metrics.Route":        "/metrics",
 		},
 		FilePath: filePath,
 	})
