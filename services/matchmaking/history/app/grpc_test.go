@@ -21,9 +21,10 @@ type test struct {
 
 func newTest(t testing.TB) *test {
 	cfg := config.Config{
-		config.DBConfig{"history_test", "collection_test"},
-		config.NSQConfig{"127.0.0.1:4150", "matches_test", "db_test"},
-		100,
+		DB:                config.DBConfig{"history_test", "collection_test"},
+		NSQ:               config.NSQConfig{"127.0.0.1:4150", "matches_test", "db_test"},
+		MaxMatchResponses: 100,
+		Port:              14000,
 	}
 	service := NewService(cfg)
 
@@ -42,9 +43,10 @@ func newTest(t testing.TB) *test {
 
 func newTestWithMaxTotalResponses(t testing.TB, maxTotalResponses uint32) *test {
 	cfg := config.Config{
-		config.DBConfig{"history_test", "collection_test"},
-		config.NSQConfig{"127.0.0.1:4150", "matches_test", "db_test"},
-		maxTotalResponses,
+		DB:                config.DBConfig{"history_test", "collection_test"},
+		NSQ:               config.NSQConfig{"127.0.0.1:4150", "matches_test", "db_test"},
+		MaxMatchResponses: maxTotalResponses,
+		Port:              14000,
 	}
 	service := NewService(cfg)
 
