@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"net"
 	"testing"
 	"time"
 
@@ -18,38 +17,36 @@ import (
 )
 
 type test struct {
-	s  *grpc.Server
-	c  pb.QueueClient
-	l  net.Listener
-	qs *queueServer
+	c       pb.QueueClient
+	service *Service
 }
 
 func newTest(t testing.TB, conf ...config.Config) *test {
-	lis, err := net.Listen("tcp", "127.0.0.1:14000")
-	assert.NoError(t, err)
-
-	server := grpc.NewServer()
 	var cfg config.Config
 	if len(conf) < 1 {
 		cfg = config.Config{
+			Port:                 14000,
 			Limit:                10000,
 			PerMatch:             10,
 			RatingRange:          100,
 			AcceptTimeoutSeconds: 20,
+			Metrics:              config.MetricsConfig{14001, "/metrics"},
 		}
 	} else {
 		cfg = conf[0]
+		cfg.Port = 14000
 	}
-	service := newQueueServer(cfg)
-	pb.RegisterQueueServer(server, service)
-	go server.Serve(lis)
+
+	service := NewService(cfg)
+
+	go service.Run()
 	time.Sleep(time.Second * 2)
 
 	conn, err := grpc.Dial("127.0.0.1:14000", grpc.WithInsecure())
 	assert.NoError(t, err)
 	c := pb.NewQueueClient(conn)
 
-	return &test{server, c, lis, service}
+	return &test{c, service}
 }
 
 func (te *test) insert10(t testing.TB) {
@@ -65,8 +62,7 @@ func (te *test) insert10(t testing.TB) {
 }
 
 func (te *test) teardown() {
-	te.s.Stop()
-	te.l.Close()
+	te.service.Close()
 }
 
 func TestServiceJoinQueueFull(t *testing.T) {
@@ -595,7 +591,7 @@ func TestServiceListen(t *testing.T) {
 }
 
 func testIsInQueue(te *test, userID uint64) bool {
-	all, _ := te.qs.q.All()
+	all, _ := te.service.qs.q.All()
 	userData, ok := all[userID]
 	if !ok {
 		return false

@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"time"
@@ -33,7 +32,7 @@ func NewService(cfg config.Config) *Service {
 func (s *Service) Run() error {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", s.cfg.Port))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	s.qs = newQueueServer(s.cfg)
@@ -60,7 +59,7 @@ func (s *Service) Run() error {
 //Close gracefully stops the service
 func (s *Service) Close() {
 	if s.grpcServer != nil {
-		s.grpcServer.GracefulStop()
+		s.grpcServer.Stop()
 	}
 	if s.metricsServer != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -71,6 +70,6 @@ func (s *Service) Close() {
 
 func (s *Service) runMetricsServer(metricsCfg config.MetricsConfig) error {
 	s.metricsServer = &http.Server{Addr: fmt.Sprintf(":%v", metricsCfg.Port)}
-	http.Handle(metricsCfg.Route, promhttp.Handler())
+	s.metricsServer.Handler = promhttp.Handler()
 	return s.metricsServer.ListenAndServe()
 }
