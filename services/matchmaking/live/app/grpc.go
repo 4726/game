@@ -15,7 +15,8 @@ import (
 )
 
 type liveServer struct {
-	db *mongo.Client
+	db  *mongo.Client
+	cfg config.Config
 }
 
 func newLiveServer(cfg config.Config) (*liveServer, error) {
@@ -32,13 +33,16 @@ func newLiveServer(cfg config.Config) (*liveServer, error) {
 		return nil, fmt.Errorf("ping mongo error: %v", err)
 	}
 
-	return &liveServer{db}, nil
+	return &liveServer{db, cfg}, nil
 }
 
 func (s *liveServer) Get(ctx context.Context, in *pb.GetLiveRequest) (*pb.GetLiveResponse, error) {
 	var result pb.GetLiveResponse
 	collection := s.db.Database(s.cfg.DB.Name).Collection(s.cfg.DB.Collection)
 	if err := collection.FindOne(context.Background(), bson.M{"match_id": in.GetMatchId()}).Decode(&result); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return &result, nil
+		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -65,18 +69,18 @@ func (s *liveServer) FindMultiple(ctx context.Context, in *pb.FindMultipleLiveRe
 	var matches []*pb.GetLiveResponse
 	collection := s.db.Database(s.cfg.DB.Name).Collection(s.cfg.DB.Collection)
 	findOptions := options.Find()
-	findOptions.SetSort(bson.M{"start_time": -1})
+	findOptions.SetSort(bson.M{"starttime": -1})
 	findOptions.SetLimit(int64(in.GetTotal()))
 	filter := bson.M{"$or": bson.A{
-		bson.M{"team1.average_rating": bson.M{"$and": bson.A{
-			bson.M{"$gt": in.GetRatingOver()},
-			bson.M{"$lt": in.GetRatingUnder()},
-		}}},
-		bson.M{"team2.average_rating": bson.M{"$and": bson.A{
-			bson.M{"$gt": in.GetRatingOver()},
-			bson.M{"$lt": in.GetRatingUnder()},
-		}}}},
-	}
+		bson.M{"team1.averagerating": bson.D{
+			{"$gt", in.GetRatingOver()},
+			{"$lt", in.GetRatingUnder()},
+		}},
+		bson.M{"team2.averagerating": bson.D{
+			{"$gt", in.GetRatingOver()},
+			{"$lt", in.GetRatingUnder()},
+		}},
+	}}
 	cur, err := collection.Find(context.Background(), filter, findOptions)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -95,11 +99,17 @@ func (s *liveServer) FindUser(ctx context.Context, in *pb.FindUserLiveRequest) (
 	var result pb.GetLiveResponse
 	collection := s.db.Database(s.cfg.DB.Name).Collection(s.cfg.DB.Collection)
 	filter := bson.M{"$or": bson.A{
-		bson.M{"team1.users": bson.M{"$in": in.GetUserId()}},
-		bson.M{"team2.users": bson.M{"$in": in.GetUserId()}},
+		bson.M{"team1.users": bson.M{"$in": bson.A{in.GetUserId()}}},
+		bson.M{"team2.users": bson.M{"$in": bson.A{in.GetUserId()}}},
 	},
 	}
 	if err := collection.FindOne(context.Background(), filter).Decode(&result); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return &pb.FindUserLiveResponse{
+				UserId:  in.GetUserId(),
+				MatchId: 0,
+			}, nil
+		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 

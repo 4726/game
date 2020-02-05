@@ -32,7 +32,7 @@ func newTest(t testing.TB) *test {
 	assert.NoError(t, err)
 	c := pb.NewLiveClient(conn)
 
-	collection := service.hs.db.Database("live_test").Collection("collection_test")
+	collection := service.ls.db.Database("live_test").Collection("collection_test")
 	assert.NoError(t, collection.Drop(context.Background()))
 
 	return &test{c, service}
@@ -89,6 +89,9 @@ func TestServiceGet(t *testing.T) {
 		Team2:     addIn.GetTeam2(),
 		StartTime: addIn.GetStartTime(),
 	}
+	expectedResp.Team1.XXX_sizecache = 0
+	expectedResp.Team2.XXX_sizecache = 0
+	expectedResp.StartTime.XXX_sizecache = 0
 	assert.Equal(t, expectedResp, resp)
 }
 
@@ -143,7 +146,7 @@ func TestServiceFindMultipleNone(t *testing.T) {
 	}
 	resp, err := te.c.FindMultiple(context.Background(), in)
 	assert.NoError(t, err)
-	expectedResp := &pb.FindMultipleLiveResponse{Matches: []*pb.GetLiveResponse{}}
+	expectedResp := &pb.FindMultipleLiveResponse{Matches: nil}
 	assert.Equal(t, expectedResp, resp)
 }
 
@@ -163,18 +166,26 @@ func TestServiceFindMultiple(t *testing.T) {
 	in := &pb.FindMultipleLiveRequest{
 		Total:       10,
 		RatingOver:  0,
-		RatingUnder: 3000,
+		RatingUnder: 3001,
 	}
 	resp, err := te.c.FindMultiple(context.Background(), in)
 	assert.NoError(t, err)
-	expectedMatches := &pb.GetLiveResponse{
+	expectedMatch := &pb.GetLiveResponse{
 		MatchId:   addIn.GetMatchId(),
 		Team1:     addIn.GetTeam1(),
 		Team2:     addIn.GetTeam2(),
 		StartTime: addIn.GetStartTime(),
 	}
-	expectedResp := &pb.FindMultipleLiveResponse{Matches: expectedMatches}
-	assert.Equal(t, expectedResp, resp)
+	expectedResp := &pb.FindMultipleLiveResponse{
+		Matches: []*pb.GetLiveResponse{expectedMatch},
+	}
+	for i, v := range expectedResp.Matches {
+		actual := resp.GetMatches()[i]
+		v.Team1.XXX_sizecache = 0
+		v.Team2.XXX_sizecache = 0
+		v.StartTime.XXX_sizecache = 0
+		assert.Equal(t, v, actual)
+	}
 }
 
 func TestServiceFindUserNone(t *testing.T) {
@@ -203,7 +214,7 @@ func TestServiceFindUserNone(t *testing.T) {
 	in := &pb.FindUserLiveRequest{
 		UserId: 11,
 	}
-	resp, err := te.c.FindOne(context.Background(), in)
+	resp, err := te.c.FindUser(context.Background(), in)
 	assert.NoError(t, err)
 	expectedResp := &pb.FindUserLiveResponse{UserId: in.GetUserId()}
 	assert.Equal(t, expectedResp, resp)
@@ -235,7 +246,7 @@ func TestServiceFindUser(t *testing.T) {
 	in := &pb.FindUserLiveRequest{
 		UserId: 1,
 	}
-	resp, err := te.c.FindOne(context.Background(), in)
+	resp, err := te.c.FindUser(context.Background(), in)
 	assert.NoError(t, err)
 	expectedResp := &pb.FindUserLiveResponse{
 		UserId:  in.GetUserId(),
@@ -267,15 +278,14 @@ func TestServiceAddDuplicate(t *testing.T) {
 	_, err := te.c.Add(context.Background(), addIn)
 	assert.NoError(t, err)
 
-	resp, err = te.c.Add(context.Background(), addIn)
+	resp, err := te.c.Add(context.Background(), addIn)
 	assert.NoError(t, err)
-
 	expectedResp := &pb.AddLiveResponse{}
 	assert.Equal(t, expectedResp, resp)
 
 	totalResp, err := te.c.GetTotal(context.Background(), &pb.GetTotalLiveRequest{})
 	assert.NoError(t, err)
-	assert.Equal(t, 1, totalResp.GetTotal())
+	assert.Equal(t, uint64(1), totalResp.GetTotal())
 }
 
 func TestServiceAdd(t *testing.T) {
@@ -327,7 +337,7 @@ func TestServiceRemoveDoesNotExist(t *testing.T) {
 
 	totalResp, err := te.c.GetTotal(context.Background(), &pb.GetTotalLiveRequest{})
 	assert.NoError(t, err)
-	assert.Equal(t, 1, totalResp.GetTotal())
+	assert.Equal(t, uint64(1), totalResp.GetTotal())
 }
 
 func TestServiceRemove(t *testing.T) {
@@ -363,5 +373,5 @@ func TestServiceRemove(t *testing.T) {
 
 	totalResp, err := te.c.GetTotal(context.Background(), &pb.GetTotalLiveRequest{})
 	assert.NoError(t, err)
-	assert.Equal(t, 0, totalResp.GetTotal())
+	assert.Equal(t, uint64(0), totalResp.GetTotal())
 }

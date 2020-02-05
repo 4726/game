@@ -8,6 +8,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/prometheus/client_golang v0.9.3
+	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/viper v1.6.2 // indirect
 	github.com/stretchr/testify v1.3.0
 	go.mongodb.org/mongo-driver v1.3.0
