@@ -1,4 +1,4 @@
-package grpc
+package grpcutil
 
 import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
