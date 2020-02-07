@@ -1,0 +1,26 @@
+syntax = "proto3";
+package pb;
+
+service Ranking {
+    rpc Get(GetRankingRequest) returns (GetRankingResponse);
+    rpc GetTop(GetTopRankingRequest) returns (GetTopRankingResponse);
+}
+
+message GetRankingRequest {
+    uint64 user_id = 1;
+}
+
+message GetRankingResponse {
+    uint64 user_id = 1;
+    uint64 rating = 2;
+    uint64 rank = 3;
+}
+
+message GetTopRankingRequest {
+    uint64 limit = 1;
+    uint64 skip = 2;
+}
+
+message GetTopRankingResponse {
+    repeated GetRankingResponse ratings = 1;
+}

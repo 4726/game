@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc"
 )
 
+// DefaultServer returns a new grpc server with a logging middleware and a metrics middleware
 func DefaultServer(logEntry *logrus.Entry) *grpc.Server {
 	var opts []grpc.ServerOption
 	opts = append(opts, grpc_middleware.WithUnaryServerChain(
