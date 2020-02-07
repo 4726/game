@@ -15,6 +15,7 @@ import (
 var defaultEnvKeyReplacer = strings.NewReplacer(".", "_")
 var defaultConfigFileName = "config.yml"
 
+
 type ConfigOpts struct {
 	EnvPrefix      string
 	EnvKeyReplacer *strings.Replacer
@@ -35,6 +36,7 @@ func (o ConfigOpts) fix() (ConfigOpts, error) {
 	return o, nil
 }
 
+// LoadConfig loads configuration values into cfg
 func LoadConfig(cfg interface{}, opts ConfigOpts) error {
 	opts, err := opts.fix()
 	if err != nil {
