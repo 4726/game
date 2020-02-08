@@ -1,19 +1,15 @@
 package app
 
 import (
-	"bytes"
-	"context"
-	"time"
 	"encoding/json"
 
-	"github.com/4726/game/services/matchmaking/ranking/pb"
-	"github.com/nsqio/go-nsq"
 	"github.com/go-redis/redis/v7"
+	"github.com/nsqio/go-nsq"
 )
 
 // nsqMessageHandler implements nsq.Handler
 type nsqMessageHandler struct {
-	db                   *redis.Client
+	db       *redis.Client
 	zSetName string
 }
 
@@ -25,7 +21,7 @@ type Rating struct {
 
 // ToRedisZ returns a *redis.Z from Rating
 func (r Rating) ToRedisZ() *redis.Z {
-	return &redis.Z{float64(r.Rating), rating.UserId}
+	return &redis.Z{float64(r.Rating), r.UserID}
 }
 
 func (h *nsqMessageHandler) HandleMessage(m *nsq.Message) error {
@@ -33,9 +29,8 @@ func (h *nsqMessageHandler) HandleMessage(m *nsq.Message) error {
 		return nil
 	}
 
-	buffer := bytes.NewBuffer(m.Body)
 	var rating Rating
-	if err := jsonpb.Unmarshal(buffer, &rating); err != nil {
+	if err := json.Unmarshal(m.Body, &rating); err != nil {
 		return err
 	}
 

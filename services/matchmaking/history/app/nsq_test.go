@@ -3,7 +3,6 @@ package app
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -50,8 +49,6 @@ func TestNSQHandleMessage(t *testing.T) {
 	assert.NoError(t, err)
 	defer cur.Close(context.Background())
 	assert.NoError(t, cur.All(context.Background(), &matches))
-	fmt.Println("testMatches: ", len(testMatches))
-	fmt.Println("matches: ", len(matches))
 	assert.ElementsMatch(t, testMatches, matches)
 }
 
