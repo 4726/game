@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 )
 
@@ -588,6 +589,53 @@ func TestServiceListen(t *testing.T) {
 	assert.ElementsMatch(t, expectedUsers, msg.User)
 	assert.Equal(t, uint64(1), msg.MatchId)
 	assertEmptyRecv(t, outStream)
+}
+
+func TestServiceTLSInvalidPath(t *testing.T) {
+	cfg := config.Config{
+		Port:                 14000,
+		Limit:                10000,
+		PerMatch:             10,
+		RatingRange:          100,
+		AcceptTimeoutSeconds: 20,
+		Metrics:              config.MetricsConfig{14001, "/metrics"},
+		TLS:                  config.TLSConfig{"crt.pem", "key.pem"},
+	}
+
+	service := NewService(cfg)
+	defer service.Close()
+
+	assert.Error(t, service.Run())
+}
+
+func TestServiceTLS(t *testing.T) {
+	cfg := config.Config{
+		Port:                 14000,
+		Limit:                10000,
+		PerMatch:             10,
+		RatingRange:          100,
+		AcceptTimeoutSeconds: 20,
+		Metrics:              config.MetricsConfig{14001, "/metrics"},
+		TLS:                  config.TLSConfig{"../../../../tests/tls/localhost.crt", "../../../../tests/tls/localhost.key"},
+	}
+
+	service := NewService(cfg)
+	defer service.Close()
+
+	go service.Run()
+	time.Sleep(time.Second * 2)
+
+	creds, err := credentials.NewClientTLSFromFile(cfg.TLS.CertPath, "localhost")
+	assert.NoError(t, err)
+	conn, err := grpc.Dial("127.0.0.1:14000", grpc.WithTransportCredentials(creds))
+	assert.NoError(t, err)
+	c := pb.NewQueueClient(conn)
+	in := &pb.QueueInfoRequest{
+		UserId: 1,
+		Rating: 1000,
+	}
+	_, err = c.Info(context.Background(), in)
+	assert.NoError(t, err)
 }
 
 func testIsInQueue(te *test, userID uint64) bool {

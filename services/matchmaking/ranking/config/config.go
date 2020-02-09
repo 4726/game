@@ -5,10 +5,11 @@ import (
 )
 
 type Config struct {
-	Redis                RedisConfig
-	NSQ               NSQConfig
-	Port              int
-	Metrics           MetricsConfig
+	Redis   RedisConfig
+	NSQ     NSQConfig
+	Port    int
+	Metrics MetricsConfig
+	TLS TLSConfig
 }
 
 type MetricsConfig struct {
@@ -17,14 +18,18 @@ type MetricsConfig struct {
 }
 
 type RedisConfig struct {
-	Addr string
+	Addr     string
 	Password string
-	DB int
-	SetName string
+	DB       int
+	SetName  string
 }
 
 type NSQConfig struct {
 	Addr, Topic, Channel string
+}
+
+type TLSConfig struct {
+	CertPath, KeyPath string
 }
 
 const defaultMaxMatchResponses = 100
@@ -35,9 +40,9 @@ func LoadConfig(filePath string) (Config, error) {
 	err := config.LoadConfig(&cfg, config.ConfigOpts{
 		EnvPrefix: "history",
 		Defaults: map[string]interface{}{
-			"Port":              defaultPort,
-			"Metrics.Port":      14001,
-			"Metrics.Route":     "/metrics",
+			"Port":          defaultPort,
+			"Metrics.Port":  14001,
+			"Metrics.Route": "/metrics",
 		},
 		FilePath: filePath,
 	})

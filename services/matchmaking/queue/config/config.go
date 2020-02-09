@@ -11,11 +11,16 @@ type Config struct {
 	RatingRange          int
 	AcceptTimeoutSeconds int
 	Metrics              MetricsConfig
+	TLS                  TLSConfig
 }
 
 type MetricsConfig struct {
 	Port  int
 	Route string
+}
+
+type TLSConfig struct {
+	CertPath, KeyPath string
 }
 
 const defaultLimit = 10000

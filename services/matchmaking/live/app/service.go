@@ -35,7 +35,15 @@ func (s *Service) Run() error {
 		return err
 	}
 
-	s.grpcServer = grpcutil.DefaultServer(logEntry)
+	if s.cfg.TLS.CertPath != "" && s.cfg.TLS.KeyPath != "" {
+		s.grpcServer, err = grpcutil.DefaultServerTLS(logEntry, s.cfg.TLS.CertPath, s.cfg.TLS.KeyPath)
+		if err != nil {
+			return fmt.Errorf("grpc error: %v", err)
+		}
+	} else {
+		s.grpcServer = grpcutil.DefaultServer(logEntry)
+	}
+	
 	pb.RegisterLiveServer(s.grpcServer, s.ls)
 	grpc_prometheus.Register(s.grpcServer)
 
@@ -53,5 +61,7 @@ func (s *Service) Close() {
 	if s.grpcServer != nil {
 		s.grpcServer.Stop()
 	}
-	s.metricsServer.Close()
+	if s.metricsServer != nil {
+		s.metricsServer.Close()
+	}
 }

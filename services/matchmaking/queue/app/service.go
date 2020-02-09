@@ -33,7 +33,15 @@ func (s *Service) Run() error {
 
 	s.qs = newQueueServer(s.cfg)
 
-	s.grpcServer = grpcutil.DefaultServer(logEntry)
+	if s.cfg.TLS.CertPath != "" && s.cfg.TLS.KeyPath != "" {
+		s.grpcServer, err = grpcutil.DefaultServerTLS(logEntry, s.cfg.TLS.CertPath, s.cfg.TLS.KeyPath)
+		if err != nil {
+			return fmt.Errorf("grpc error: %v", err)
+		}
+	} else {
+		s.grpcServer = grpcutil.DefaultServer(logEntry)
+	}
+
 	pb.RegisterQueueServer(s.grpcServer, s.qs)
 	grpc_prometheus.Register(s.grpcServer)
 
@@ -48,6 +56,7 @@ func (s *Service) Close() {
 	if s.grpcServer != nil {
 		s.grpcServer.Stop()
 	}
-
-	s.metricsServer.Close()
+	if s.metricsServer != nil {
+		s.metricsServer.Close()
+	}
 }

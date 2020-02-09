@@ -10,6 +10,7 @@ type Config struct {
 	MaxMatchResponses uint32
 	Port              int
 	Metrics           MetricsConfig
+	TLS TLSConfig
 }
 
 type MetricsConfig struct {
@@ -23,6 +24,10 @@ type DBConfig struct {
 
 type NSQConfig struct {
 	Addr, Topic, Channel string
+}
+
+type TLSConfig struct {
+	CertPath, KeyPath string
 }
 
 const defaultMaxMatchResponses = 100

@@ -5,9 +5,10 @@ import (
 )
 
 type Config struct {
-	DB                DBConfig
-	Port              int
-	Metrics           MetricsConfig
+	DB      DBConfig
+	Port    int
+	Metrics MetricsConfig
+	TLS TLSConfig
 }
 
 type MetricsConfig struct {
@@ -17,6 +18,10 @@ type MetricsConfig struct {
 
 type DBConfig struct {
 	Name, Collection string
+}
+
+type TLSConfig struct {
+	CertPath, KeyPath string
 }
 
 const defaultMaxMatchResponses = 100
