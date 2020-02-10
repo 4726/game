@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/4726/game v0.0.0-20200209220421-bebe5544555b
 	github.com/DataDog/zstd v1.4.4 // indirect
+	github.com/cenkalti/backoff/v4 v4.0.0
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang/protobuf v1.3.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0

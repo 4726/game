@@ -21,13 +21,14 @@ type test struct {
 
 func newTest(t testing.TB) *test {
 	cfg := config.Config{
-		DB:                config.DBConfig{"history_test", "collection_test"},
+		DB:                config.DBConfig{"history_test", "collection_test", "mongodb://localhost:27017", 10},
 		NSQ:               config.NSQConfig{"127.0.0.1:4150", "matches_test", "db_test"},
 		MaxMatchResponses: 100,
 		Port:              14000,
 		Metrics:           config.MetricsConfig{14001, "/metrics"},
 	}
-	service := NewService(cfg)
+	service, err := NewService(cfg)
+	assert.NoError(t, err)
 
 	go service.Run()
 	time.Sleep(time.Second * 2)
@@ -44,13 +45,14 @@ func newTest(t testing.TB) *test {
 
 func newTestWithMaxTotalResponses(t testing.TB, maxTotalResponses uint32) *test {
 	cfg := config.Config{
-		DB:                config.DBConfig{"history_test", "collection_test"},
+		DB:                config.DBConfig{"history_test", "collection_test", "mongodb://localhost:27017", 10},
 		NSQ:               config.NSQConfig{"127.0.0.1:4150", "matches_test", "db_test"},
 		MaxMatchResponses: maxTotalResponses,
 		Port:              14000,
 		Metrics:           config.MetricsConfig{14001, "/metrics"},
 	}
-	service := NewService(cfg)
+	service, err := NewService(cfg)
+	assert.NoError(t, err)
 
 	go service.Run()
 	time.Sleep(time.Second * 2)

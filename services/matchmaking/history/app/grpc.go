@@ -13,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"github.com/cenkalti/backoff/v4"
 )
 
 //historyServer implements pb.HistoryServer
@@ -23,28 +24,41 @@ type historyServer struct {
 }
 
 func newHistoryServer(c config.Config) (*historyServer, error) {
-	opts := options.Client().ApplyURI("mongodb://localhost:27017")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	opts := options.Client().ApplyURI(c.DB.Addr)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(c.DB.DialTimeout))
 	defer cancel()
 	db, err := mongo.Connect(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to mongo: " + err.Error())
 	}
-	pingCtx, pingCancel := context.WithTimeout(context.Background(), time.Second*10)
+	logEntry.Info("connection to mongodb: ", c.DB.Addr)
+	pingCtx, pingCancel := context.WithTimeout(context.Background(), time.Second*time.Duration(c.DB.DialTimeout))
 	defer pingCancel()
 	if err = db.Ping(pingCtx, nil); err != nil {
 		return nil, fmt.Errorf("ping mongo error: %v", err)
 	}
+	logEntry.Info("connected to mongodb: ", c.DB.Addr)
 
 	consumer, err := nsq.NewConsumer(c.NSQ.Topic, c.NSQ.Channel, nsq.NewConfig())
 	if err != nil {
 		return nil, fmt.Errorf("could not create nsq consumer: %v", err)
 	}
 	consumer.AddHandler(&nsqMessageHandler{db, c.DB.Name, c.DB.Collection})
-	if err := consumer.ConnectToNSQD(c.NSQ.Addr); err != nil {
-		return nil, fmt.Errorf("could not connect to nsqd: %v", err)
+	
+	op := func() error {
+		logEntry.Info("connecting to nsq: ", c.NSQ.Addr)
+		err := consumer.ConnectToNSQD(c.NSQ.Addr)
+		if err != nil {
+			logEntry.Warn("could not connect to nsq, retrying")
+		}
+		return err
 	}
 
+	if err := backoff.Retry(op, backoff.NewExponentialBackOff()); err != nil {
+		logEntry.Error("could not connect to nsq, max retries reached")
+		return nil, fmt.Errorf("could not connect to nsqd: %v", err)
+	}
+	
 	return &historyServer{consumer, db, c}, nil
 }
 
