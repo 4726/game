@@ -38,7 +38,8 @@ func newTest(t testing.TB, conf ...config.Config) *test {
 		cfg.Port = 14000
 	}
 
-	service := NewService(cfg)
+	service, err := NewService(cfg)
+	assert.NoError(t, err)
 
 	go service.Run()
 	time.Sleep(time.Second * 2)
@@ -602,10 +603,8 @@ func TestServiceTLSInvalidPath(t *testing.T) {
 		TLS:                  config.TLSConfig{"crt.pem", "key.pem"},
 	}
 
-	service := NewService(cfg)
-	defer service.Close()
-
-	assert.Error(t, service.Run())
+	_, err := NewService(cfg)
+	assert.Error(t, err)
 }
 
 func TestServiceTLS(t *testing.T) {
@@ -619,7 +618,8 @@ func TestServiceTLS(t *testing.T) {
 		TLS:                  config.TLSConfig{"../../../../tests/tls/localhost.crt", "../../../../tests/tls/localhost.key"},
 	}
 
-	service := NewService(cfg)
+	service, err := NewService(cfg)
+	assert.NoError(t, err)
 	defer service.Close()
 
 	go service.Run()

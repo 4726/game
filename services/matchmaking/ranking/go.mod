@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/4726/game v0.0.0-20200209220421-bebe5544555b
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/go-redis/redis/v7 v7.0.0-beta.6
 	github.com/golang/protobuf v1.3.3
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0

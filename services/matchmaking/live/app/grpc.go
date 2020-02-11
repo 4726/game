@@ -20,18 +20,20 @@ type liveServer struct {
 }
 
 func newLiveServer(cfg config.Config) (*liveServer, error) {
-	opts := options.Client().ApplyURI("mongodb://localhost:27017")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	opts := options.Client().ApplyURI(cfg.DB.Addr)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(cfg.DB.DialTimeout))
 	defer cancel()
 	db, err := mongo.Connect(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to mongo: " + err.Error())
 	}
-	pingCtx, pingCancel := context.WithTimeout(context.Background(), time.Second*10)
+	logEntry.Info("connection to mongodb: ", cfg.DB.Addr)
+	pingCtx, pingCancel := context.WithTimeout(context.Background(), time.Second*time.Duration(cfg.DB.DialTimeout))
 	defer pingCancel()
 	if err = db.Ping(pingCtx, nil); err != nil {
 		return nil, fmt.Errorf("ping mongo error: %v", err)
 	}
+	logEntry.Info("connected to mongodb: ", cfg.DB.Addr)
 
 	return &liveServer{db, cfg}, nil
 }

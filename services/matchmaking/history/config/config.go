@@ -10,7 +10,7 @@ type Config struct {
 	MaxMatchResponses uint32
 	Port              int
 	Metrics           MetricsConfig
-	TLS TLSConfig
+	TLS               TLSConfig
 }
 
 type MetricsConfig struct {
@@ -20,8 +20,8 @@ type MetricsConfig struct {
 
 type DBConfig struct {
 	Name, Collection string
-	Addr string 
-	DialTimeout uint //seconds
+	Addr             string
+	DialTimeout      uint //seconds
 }
 
 type NSQConfig struct {
@@ -44,10 +44,10 @@ func LoadConfig(filePath string) (Config, error) {
 			"Port":              defaultPort,
 			"Metrics.Port":      14001,
 			"Metrics.Route":     "/metrics",
-			"DB.Name": "matchmaking",
-			"DB.Collection": "history",
-			"DB.Addr": "mongodb://localhost:27017",
-			"DB.DialTimeout": 10,
+			"DB.Name":           "matchmaking",
+			"DB.Collection":     "history",
+			"DB.Addr":           "mongodb://localhost:27017",
+			"DB.DialTimeout":    10,
 		},
 		FilePath: filePath,
 	})

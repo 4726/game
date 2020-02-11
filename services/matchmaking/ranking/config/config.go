@@ -9,7 +9,7 @@ type Config struct {
 	NSQ     NSQConfig
 	Port    int
 	Metrics MetricsConfig
-	TLS TLSConfig
+	TLS     TLSConfig
 }
 
 type MetricsConfig struct {

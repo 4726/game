@@ -8,7 +8,7 @@ type Config struct {
 	DB      DBConfig
 	Port    int
 	Metrics MetricsConfig
-	TLS TLSConfig
+	TLS     TLSConfig
 }
 
 type MetricsConfig struct {
@@ -18,6 +18,8 @@ type MetricsConfig struct {
 
 type DBConfig struct {
 	Name, Collection string
+	Addr             string
+	DialTimeout      uint //seconds
 }
 
 type TLSConfig struct {

@@ -7,13 +7,13 @@ import (
 
 	"github.com/4726/game/services/matchmaking/history/config"
 	"github.com/4726/game/services/matchmaking/history/pb"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/nsqio/go-nsq"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"github.com/cenkalti/backoff/v4"
 )
 
 //historyServer implements pb.HistoryServer
@@ -44,7 +44,7 @@ func newHistoryServer(c config.Config) (*historyServer, error) {
 		return nil, fmt.Errorf("could not create nsq consumer: %v", err)
 	}
 	consumer.AddHandler(&nsqMessageHandler{db, c.DB.Name, c.DB.Collection})
-	
+
 	op := func() error {
 		logEntry.Info("connecting to nsq: ", c.NSQ.Addr)
 		err := consumer.ConnectToNSQD(c.NSQ.Addr)
@@ -58,7 +58,7 @@ func newHistoryServer(c config.Config) (*historyServer, error) {
 		logEntry.Error("could not connect to nsq, max retries reached")
 		return nil, fmt.Errorf("could not connect to nsqd: %v", err)
 	}
-	
+
 	return &historyServer{consumer, db, c}, nil
 }
 

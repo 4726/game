@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -24,7 +25,9 @@ func newTest(t testing.TB) *test {
 		Port:    14000,
 		Metrics: config.MetricsConfig{14001, "/metrics"},
 	}
-	service := NewService(cfg)
+	service, err := NewService(cfg)
+	fmt.Println(err)
+	assert.NoError(t, err)
 
 	go service.Run()
 	time.Sleep(time.Second * 2)

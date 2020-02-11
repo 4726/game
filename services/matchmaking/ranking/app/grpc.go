@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/4726/game/services/matchmaking/ranking/config"
 	"github.com/4726/game/services/matchmaking/ranking/pb"
+	"github.com/cenkalti/backoff"
 	"github.com/go-redis/redis/v7"
 	"github.com/nsqio/go-nsq"
 	"google.golang.org/grpc/codes"
@@ -22,13 +24,24 @@ type rankingServer struct {
 
 func newRankingServer(c config.Config) (*rankingServer, error) {
 	db := redis.NewClient(&redis.Options{
-		Addr:     c.Redis.Addr,
-		Password: c.Redis.Password,
-		DB:       c.Redis.DB,
+		Addr:        c.Redis.Addr,
+		Password:    c.Redis.Password,
+		DB:          c.Redis.DB,
+		DialTimeout: time.Second * 10,
 	})
 
-	if err := db.Ping().Err(); err != nil {
-		return nil, fmt.Errorf("redis ping: %v", err)
+	redisOp := func() error {
+		logEntry.Info("connecting to redis: ", c.Redis.Addr)
+		err := db.Ping().Err()
+		if err != nil {
+			logEntry.Warn("could not connect to redis, retrying")
+		}
+		return err
+	}
+
+	if err := backoff.Retry(redisOp, backoff.NewExponentialBackOff()); err != nil {
+		logEntry.Error("could not connect to redis, max retries reached")
+		return nil, fmt.Errorf("could not connect to redis: %v", err)
 	}
 
 	consumer, err := nsq.NewConsumer(c.NSQ.Topic, c.NSQ.Channel, nsq.NewConfig())
@@ -36,7 +49,18 @@ func newRankingServer(c config.Config) (*rankingServer, error) {
 		return nil, fmt.Errorf("could not create nsq consumer: %v", err)
 	}
 	consumer.AddHandler(&nsqMessageHandler{db, c.Redis.SetName})
-	if err := consumer.ConnectToNSQD(c.NSQ.Addr); err != nil {
+
+	op := func() error {
+		logEntry.Info("connecting to nsq: ", c.NSQ.Addr)
+		err := consumer.ConnectToNSQD(c.NSQ.Addr)
+		if err != nil {
+			logEntry.Warn("could not connect to nsq, retrying")
+		}
+		return err
+	}
+
+	if err := backoff.Retry(op, backoff.NewExponentialBackOff()); err != nil {
+		logEntry.Error("could not connect to nsq, max retries reached")
 		return nil, fmt.Errorf("could not connect to nsqd: %v", err)
 	}
 

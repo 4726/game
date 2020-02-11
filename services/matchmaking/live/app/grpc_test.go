@@ -19,11 +19,12 @@ type test struct {
 
 func newTest(t testing.TB) *test {
 	cfg := config.Config{
-		DB:      config.DBConfig{"live_test", "collection_test"},
+		DB:      config.DBConfig{"live_test", "collection_test", "mongodb://localhost:27017", 10},
 		Port:    14000,
 		Metrics: config.MetricsConfig{14001, "/metrics"},
 	}
-	service := NewService(cfg)
+	service, err := NewService(cfg)
+	assert.NoError(t, err)
 
 	go service.Run()
 	time.Sleep(time.Second * 2)
