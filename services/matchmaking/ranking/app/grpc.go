@@ -27,7 +27,6 @@ func newRankingServer(c config.Config) (*rankingServer, error) {
 		Addr:        c.Redis.Addr,
 		Password:    c.Redis.Password,
 		DB:          c.Redis.DB,
-		DialTimeout: time.Second * 10,
 	})
 
 	redisOp := func() error {

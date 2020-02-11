@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -26,7 +25,6 @@ func newTest(t testing.TB) *test {
 		Metrics: config.MetricsConfig{14001, "/metrics"},
 	}
 	service, err := NewService(cfg)
-	fmt.Println(err)
 	assert.NoError(t, err)
 
 	go service.Run()
@@ -231,4 +229,31 @@ func TestServiceGetTop(t *testing.T) {
 		Ratings: []*pb.GetRankingResponse{r1, r2, r3, r4},
 	}
 	assert.Equal(t, expectedResp, resp)
+}
+
+func TestServiceTLSInvalidPath(t *testing.T) {
+	cfg := config.Config{
+		Redis:   config.RedisConfig{"localhost:6379", "", 0, "ranking_test"},
+		NSQ:     config.NSQConfig{"127.0.0.1:4150", "ranking_test", "test"},
+		Port:    14000,
+		Metrics: config.MetricsConfig{14001, "/metrics"},
+		TLS:     config.TLSConfig{"crt.pem", "key.pem"},
+	}
+
+	_, err := NewService(cfg)
+	assert.Error(t, err)
+}
+
+func TestServiceTLS(t *testing.T) {
+	cfg := config.Config{
+		Redis:   config.RedisConfig{"localhost:6379", "", 0, "ranking_test"},
+		NSQ:     config.NSQConfig{"127.0.0.1:4150", "ranking_test", "test"},
+		Port:    14000,
+		Metrics: config.MetricsConfig{14001, "/metrics"},
+		TLS:     config.TLSConfig{"../../../../tests/tls/localhost.crt", "../../../../tests/tls/localhost.key"},
+	}
+
+	service, err := NewService(cfg)
+	assert.NoError(t, err)
+	defer service.Close()
 }

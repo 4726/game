@@ -234,3 +234,32 @@ func TestServiceGetUser(t *testing.T) {
 	}
 	assert.Equal(t, expectedResp, resp)
 }
+
+func TestServiceTLSInvalidPath(t *testing.T) {
+	cfg := config.Config{
+		DB:                config.DBConfig{"history_test", "collection_test", "mongodb://localhost:27017", 10},
+		NSQ:               config.NSQConfig{"127.0.0.1:4150", "matches_test", "db_test"},
+		MaxMatchResponses: 100,
+		Port:              14000,
+		Metrics:           config.MetricsConfig{14001, "/metrics"},
+		TLS:     config.TLSConfig{"crt.pem", "key.pem"},
+	}
+
+	_, err := NewService(cfg)
+	assert.Error(t, err)
+}
+
+func TestServiceTLS(t *testing.T) {
+	cfg := config.Config{
+		DB:                config.DBConfig{"history_test", "collection_test", "mongodb://localhost:27017", 10},
+		NSQ:               config.NSQConfig{"127.0.0.1:4150", "matches_test", "db_test"},
+		MaxMatchResponses: 100,
+		Port:              14000,
+		Metrics:           config.MetricsConfig{14001, "/metrics"},
+		TLS:     config.TLSConfig{"../../../../tests/tls/localhost.crt", "../../../../tests/tls/localhost.key"},
+	}
+	
+	service, err := NewService(cfg)
+	assert.NoError(t, err)
+	defer service.Close()
+}

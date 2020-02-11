@@ -376,3 +376,28 @@ func TestServiceRemove(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(0), totalResp.GetTotal())
 }
+
+func TestServiceTLSInvalidPath(t *testing.T) {
+	cfg := config.Config{
+		DB:      config.DBConfig{"live_test", "collection_test", "mongodb://localhost:27017", 10},
+		Port:    14000,
+		Metrics: config.MetricsConfig{14001, "/metrics"},
+		TLS:     config.TLSConfig{"crt.pem", "key.pem"},
+	}
+
+	_, err := NewService(cfg)
+	assert.Error(t, err)
+}
+
+func TestServiceTLS(t *testing.T) {
+	cfg := config.Config{
+		DB:      config.DBConfig{"live_test", "collection_test", "mongodb://localhost:27017", 10},
+		Port:    14000,
+		Metrics: config.MetricsConfig{14001, "/metrics"},
+		TLS:     config.TLSConfig{"../../../../tests/tls/localhost.crt", "../../../../tests/tls/localhost.key"},
+	}
+
+	service, err := NewService(cfg)
+	assert.NoError(t, err)
+	defer service.Close()
+}
