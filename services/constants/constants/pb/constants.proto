@@ -1,0 +1,26 @@
+syntax = "proto3";
+package pb;
+
+service Constants {
+    rpc Get(GetConstantsRequest) returns (GetConstantsResponse);
+    rpc GetAll(GetAllConstantsRequest) returns (GetAllConstantsResponse);
+}
+
+message GetConstantsRequest {
+    repeated string keys = 1;
+}
+
+message GetConstantsResponse {
+    repeated ConstantItem items = 1;
+}
+
+message ConstantItem {
+    string key = 1;
+    string value = 2;
+}
+
+message GetAllConstantsRequest {}
+
+message GetAllConstantsResponse {
+    repeated ConstantItem items = 1;
+}
