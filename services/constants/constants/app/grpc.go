@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-//historyServer implements pb.HistoryServer
+//constantsServer implements pb.ConstantsServer
 type constantsServer struct {
 	db  *redis.Client
 	cfg config.Config
