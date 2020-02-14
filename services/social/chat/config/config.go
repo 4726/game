@@ -17,6 +17,7 @@ type MetricsConfig struct {
 }
 
 type CassandraConfig struct {
+	Host string
 	Port     int
 	DialTimeout uint
 }

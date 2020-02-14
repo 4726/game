@@ -10,7 +10,7 @@ var logEntry *logrus.Entry
 
 func init() {
 	entry := logrus.WithFields(logrus.Fields{
-		"app": "constants",
+		"app": "chat",
 	})
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 	logrus.SetOutput(os.Stdout)
