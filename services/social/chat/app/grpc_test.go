@@ -8,6 +8,7 @@ import (
 
 	"github.com/4726/game/services/social/chat/config"
 	"github.com/4726/game/services/social/chat/pb"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -73,16 +74,13 @@ func TestServiceGetNone(t *testing.T) {
 	defer te.teardown()
 
 	in := &pb.GetChatRequest{
-		User1:    1,
-		User2:      2,
+		User1: 1,
+		User2: 2,
 		Total: 100,
 	}
 	resp, err := te.c.Get(context.Background(), in)
 	assert.NoError(t, err)
-	expectedResp := &pb.GetChatResponse{
-		Messages: []*pb.ChatMessage{},
-	}
-	assert.Equal(t, expectedResp, resp)
+	assert.Len(t, resp.GetMessages(), 0)
 }
 
 func TestServiceGetTotal(t *testing.T) {
@@ -95,33 +93,33 @@ func TestServiceGetTotal(t *testing.T) {
 	te.addData(t, 2, 1, "bye")
 
 	in := &pb.GetChatRequest{
-		User1:    1,
-		User2:      2,
+		User1: 1,
+		User2: 2,
 		Total: 2,
 	}
 	resp, err := te.c.Get(context.Background(), in)
 	assert.NoError(t, err)
 	expectedMsg1 := &pb.ChatMessage{
-		From: 2,
-		To: 1,
+		From:    2,
+		To:      1,
 		Message: "bye",
-		Time: time.Time{},
+		Time:    nil,
 	}
-	
-	expectedMsg2 := &pb.ChatMessage{
-		From: 1,
-		To: 2,
-		Message: "bye bye",
-		Time: time.Time{},
-	}
-	
-	var respMsgs []*pb.ChatMessage 
-	for _, v := range resp.GetMessages() {
-		t, err := ptypes.Timestamp(v.GetTime())
-		assert.NoError(t, err)
-		assert.WithinDuration(t, time.Now(), t, time.Second * 20)
 
-		v.Time == time.Time{}
+	expectedMsg2 := &pb.ChatMessage{
+		From:    1,
+		To:      2,
+		Message: "bye bye",
+		Time:    nil,
+	}
+
+	var respMsgs []*pb.ChatMessage
+	for _, v := range resp.GetMessages() {
+		ts, err := ptypes.Timestamp(v.GetTime())
+		assert.NoError(t, err)
+		assert.WithinDuration(t, time.Now(), ts, time.Second*20)
+
+		v.Time = nil
 		respMsgs = append(respMsgs, v)
 	}
 	assert.Equal(t, []*pb.ChatMessage{expectedMsg1, expectedMsg2}, resp.GetMessages())
@@ -136,40 +134,40 @@ func TestServiceGetUsersReversed(t *testing.T) {
 	te.addData(t, 1, 2, "bye bye")
 
 	in := &pb.GetChatRequest{
-		User1:    2,
-		User2:      1,
+		User1: 2,
+		User2: 1,
 		Total: 100,
 	}
 	resp, err := te.c.Get(context.Background(), in)
 	assert.NoError(t, err)
 	expectedMsg1 := &pb.ChatMessage{
-		From: 1,
-		To: 2,
+		From:    1,
+		To:      2,
 		Message: "bye bye",
-		Time: time.Time{},
+		Time:    nil,
 	}
-	
+
 	expectedMsg2 := &pb.ChatMessage{
-		From: 2,
-		To: 1,
+		From:    2,
+		To:      1,
 		Message: "hi",
-		Time: time.Time{},
+		Time:    nil,
 	}
 
-	expectedMsg2 := &pb.ChatMessage{
-		From: 1,
-		To: 2,
+	expectedMsg3 := &pb.ChatMessage{
+		From:    1,
+		To:      2,
 		Message: "hello",
-		Time: time.Time{},
+		Time:    nil,
 	}
-	
-	var respMsgs []*pb.ChatMessage 
-	for _, v := range resp.GetMessages() {
-		t, err := ptypes.Timestamp(v.GetTime())
-		assert.NoError(t, err)
-		assert.WithinDuration(t, time.Now(), t, time.Second * 20)
 
-		v.Time == time.Time{}
+	var respMsgs []*pb.ChatMessage
+	for _, v := range resp.GetMessages() {
+		ts, err := ptypes.Timestamp(v.GetTime())
+		assert.NoError(t, err)
+		assert.WithinDuration(t, time.Now(), ts, time.Second*20)
+
+		v.Time = nil
 		respMsgs = append(respMsgs, v)
 	}
 	assert.Equal(t, []*pb.ChatMessage{expectedMsg1, expectedMsg2, expectedMsg3}, resp.GetMessages())
@@ -184,43 +182,41 @@ func TestServiceGet(t *testing.T) {
 	te.addData(t, 1, 2, "bye bye")
 
 	in := &pb.GetChatRequest{
-		User1:    1,
-		User2:      2,
+		User1: 1,
+		User2: 2,
 		Total: 100,
 	}
 	resp, err := te.c.Get(context.Background(), in)
 	assert.NoError(t, err)
 	expectedMsg1 := &pb.ChatMessage{
-		From: 1,
-		To: 2,
+		From:    1,
+		To:      2,
 		Message: "bye bye",
-		Time: time.Time{},
+		Time:    nil,
 	}
-	
+
 	expectedMsg2 := &pb.ChatMessage{
-		From: 2,
-		To: 1,
+		From:    2,
+		To:      1,
 		Message: "hi",
-		Time: time.Time{},
+		Time:    nil,
 	}
 
-	expectedMsg2 := &pb.ChatMessage{
-		From: 1,
-		To: 2,
+	expectedMsg3 := &pb.ChatMessage{
+		From:    1,
+		To:      2,
 		Message: "hello",
-		Time: time.Time{},
+		Time:    nil,
 	}
-	
-	var respMsgs []*pb.ChatMessage 
-	for _, v := range resp.GetMessages() {
-		t, err := ptypes.Timestamp(v.GetTime())
-		assert.NoError(t, err)
-		assert.WithinDuration(t, time.Now(), t, time.Second * 20)
 
-		v.Time == time.Time{}
+	var respMsgs []*pb.ChatMessage
+	for _, v := range resp.GetMessages() {
+		ts, err := ptypes.Timestamp(v.GetTime())
+		assert.NoError(t, err)
+		assert.WithinDuration(t, time.Now(), ts, time.Second*20)
+
+		v.Time = nil
 		respMsgs = append(respMsgs, v)
 	}
 	assert.Equal(t, []*pb.ChatMessage{expectedMsg1, expectedMsg2, expectedMsg3}, resp.GetMessages())
 }
-
-
