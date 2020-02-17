@@ -1,0 +1,75 @@
+syntax = "proto3";
+package pb;
+
+service CustomMatch {
+    rpc Add(AddCustomMatchRequest) returns (stream AddCustomMatchResponse);
+    rpc Delete(DeleteCustomMatchRequest) returns (DeleteCustomMatchResponse);
+    rpc GetAll(GetAllCustomMatchRequest) returns (GetAllCustomMatchResponse);
+    rpc Join(JoinCustomMatchRequest) returns (stream JoinCustomMatchResponse);
+    rpc Leave(LeaveCustomMatchRequest) returns (LeaveCustomMatchResponse);
+    rpc Start(StartCustomMatchRequest) returns (StartCustomMatchRequest);
+}
+
+message AddCustomMatchRequest {
+    uint64 leader = 1;
+    string name = 2;
+    string password = 3;
+    uint32 max_users = 4;
+}
+
+message AddCustomMatchResponse {
+    repeated uint64 users = 1;
+    uint32 max_users = 2;
+    uint64 leader = 3;
+}
+
+message DeleteCustomMatchRequest {
+    uint64 user_id = 1;
+    uint64 group_id = 2;
+}
+
+message DeleteCustomMatchResponse {}
+
+message GetAllCustomMatchRequest {
+    uint32 total = 1;
+    uint32 skip = 2;
+}
+
+message GetAllCustomMatchResponse {
+    repeated CustomMatchGroup groups = 1;
+}
+
+message CustomMatchGroup {
+    uint64 group_id = 1;
+    string name = 2;
+    uint64 leader = 3;
+    bool password_required = 4;
+    uint32 max_users = 5;
+}
+
+message JoinCustomMatchRequest {
+    uint64 user_id = 1;
+    uint64 group_id = 2;
+    uint64 group_password = 3;
+}
+
+message JoinCustomMatchResponse {
+    repeated uint64 users = 1;
+    uint32 max_users = 2;
+    uint64 leader = 3;
+}
+
+message LeaveCustomMatchRequest {
+    uint64 user_id = 1;
+    uint64 group_id = 2;
+}
+
+message LeaveCustomMatchResponse {}
+
+
+message StartCustomMatchRequest {
+    uint64 user_id = 1;
+    uint64 group_id = 2;
+}
+
+message StartCustomMatchResponse {}
