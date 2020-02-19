@@ -4,18 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"time"
 
 	"github.com/4726/game/services/matchmaking/custom-match/config"
 	"github.com/4726/game/services/matchmaking/custom-match/pb"
-	"github.com/go-pg/pg"
-	"github.com/go-pg/pg/orm"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/lib/pq"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type customMatchServer struct {
-	db     *pg.DB
+	db     *gorm.DB
 	cfg    config.Config
 	groups map[int64][]chan PubSubMessage
 }
@@ -32,21 +33,16 @@ type PubSubMessage struct {
 }
 
 func newCustomMatchServer(cfg config.Config) (*customMatchServer, error) {
-	db := pg.Connect(&pg.Options{
-		User: "postgres",
-	})
-
-	if err := db.CreateTable(Group{}, &orm.CreateTableOptions{
-		IfNotExists: true,
-	}); err != nil {
+	db, err := gorm.Open("postgres", "user=postgres password=postgres")
+	if err != nil {
 		return nil, err
 	}
 
-	if err := db.CreateTable(User{}, &orm.CreateTableOptions{
-		IfNotExists: true,
-	}); err != nil {
+	if err := db.AutoMigrate(&Group{}, &User{}).Error; err != nil {
 		return nil, err
 	}
+
+	db.Model(&User{}).AddForeignKey("group_id", "groups(id)", "CASCADE", "CASCADE")
 
 	s := &customMatchServer{db, cfg, map[int64][]chan PubSubMessage{}}
 
@@ -57,26 +53,36 @@ func newCustomMatchServer(cfg config.Config) (*customMatchServer, error) {
 
 func (s *customMatchServer) Add(in *pb.AddCustomMatchRequest, outStream pb.CustomMatch_AddServer) error {
 	g := Group{
-		Leader:     in.GetLeader(),
-		Name:       in.GetName(),
-		Password:   in.GetPassword(),
-		MaxUsers:   in.GetMaxUsers(),
-		TotalUsers: 1,
+		Leader:   in.GetLeader(),
+		Name:     in.GetName(),
+		Password: in.GetPassword(),
+		MaxUsers: in.GetMaxUsers(),
 	}
 
-	u := User{
-		ID:      in.GetLeader(),
-		GroupID: g.ID,
-	}
-
-	err := s.db.RunInTransaction(func(tx *pg.Tx) error {
-		if err := tx.Insert(&u); err != nil {
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&g).Error; err != nil {
 			return err
 		}
-		return tx.Insert(&g)
+
+		u := User{
+			UserID:  in.GetLeader(),
+			GroupID: g.ID,
+		}
+
+		return tx.Create(&u).Error
 	})
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
+	}
+
+	out := &pb.AddCustomMatchResponse{
+		Users:    []uint64{},
+		MaxUsers: g.MaxUsers,
+		Leader:   g.Leader,
+	}
+
+	if err := outStream.Send(out); err != nil {
+		return err
 	}
 
 	ch := make(chan PubSubMessage, 1)
@@ -101,11 +107,12 @@ func (s *customMatchServer) Add(in *pb.AddCustomMatchRequest, outStream pb.Custo
 }
 
 func (s *customMatchServer) Delete(ctx context.Context, in *pb.DeleteCustomMatchRequest) (*pb.DeleteCustomMatchResponse, error) {
-	res, err := s.db.Model(&Group{}).Where("id = ? AND leader = ?", in.GetGroupId(), in.GetUserId()).Delete()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	res := s.db.Delete(&Group{}, "id = ? AND leader = ?", in.GetGroupId(), in.GetUserId())
+	if res.Error != nil {
+		return nil, status.Error(codes.Internal, res.Error.Error())
 	}
-	if res.RowsAffected() != 1 {
+
+	if res.RowsAffected != 1 {
 		return nil, errors.New("todo")
 	}
 
@@ -119,10 +126,9 @@ func (s *customMatchServer) Delete(ctx context.Context, in *pb.DeleteCustomMatch
 
 func (s *customMatchServer) GetAll(ctx context.Context, in *pb.GetAllCustomMatchRequest) (*pb.GetAllCustomMatchResponse, error) {
 	var groups []Group
-	_, err := s.db.Query(&groups, "SELECT * FROM groups")
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-
+	res := s.db.Preload("Users").Find(&groups)
+	if res.Error != nil {
+		return nil, status.Error(codes.Internal, res.Error.Error())
 	}
 
 	var pbGroups []*pb.CustomMatchGroup
@@ -134,7 +140,7 @@ func (s *customMatchServer) GetAll(ctx context.Context, in *pb.GetAllCustomMatch
 			Leader:           v.Leader,
 			PasswordRequired: v.Password != "",
 			MaxUsers:         v.MaxUsers,
-			TotalUsers:       v.TotalUsers,
+			TotalUsers:       uint32(len(v.Users)),
 		}
 		pbGroups = append(pbGroups, pbGroup)
 	}
@@ -159,33 +165,19 @@ func (s *customMatchServer) Join(in *pb.JoinCustomMatchRequest, outStream pb.Cus
 		if ok {
 			for i, v := range group {
 				if v == ch {
-					group[i] = group[len(group) - 1]
-					group = group[:len(group) - 1]
+					group[i] = group[len(group)-1]
+					group = group[:len(group)-1]
 				}
 			}
 			s.groups[in.GetGroupId()] = group
 		}
 	}()
 
-	err := s.db.RunInTransaction(func(tx *pg.Tx) error {
-		u := User{
-			ID:      in.GetUserId(),
-			GroupID: in.GetGroupId(),
-		}
-		if err := tx.Insert(&u); err != nil {
-			return err
-		}
-
-		_, err := tx.Exec("UPDATE groups SET total_users = total_users + 1 WHERE id = ?", in.GetGroupId())
-		if err != nil {
-			return err
-		}
-
-		var g Group
-		_, err = tx.QueryOne(&g, "SELECT * FROM groups WHERE id = ?", in.GetGroupId())
-		return err
-	})
-	if err != nil {
+	u := User{
+		UserID:  in.GetUserId(),
+		GroupID: in.GetGroupId(),
+	}
+	if err := s.db.Create(&u).Error; err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 
@@ -212,28 +204,13 @@ func (s *customMatchServer) Join(in *pb.JoinCustomMatchRequest, outStream pb.Cus
 }
 
 func (s *customMatchServer) Leave(ctx context.Context, in *pb.LeaveCustomMatchRequest) (*pb.LeaveCustomMatchResponse, error) {
-	var groupID int64
-	err := s.db.RunInTransaction(func(tx *pg.Tx) error {
-		u := User{
-			ID: in.GetUserId(),
-		}
-		if err := tx.Delete(&u); err != nil {
-			return err
-		}
-
-		_, err := tx.Model(&u).Returning("group_id").Delete()
-		if err != nil {
-			return err
-		}
-
-		groupID = u.GroupID
-
-		_, err = tx.Exec("UPDATE groups SET total_users = total_users - 1 WHERE id = ?", u.GroupID)
-		return err
-	})
-	if err != nil {
+	u := User{
+		UserID: in.GetUserId(),
+	}
+	if err := s.db.Delete(&u).Error; err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	groupID := u.GroupID
 
 	if err := s.sendNotification(groupID, false, false); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -243,28 +220,22 @@ func (s *customMatchServer) Leave(ctx context.Context, in *pb.LeaveCustomMatchRe
 }
 
 func (s *customMatchServer) Start(ctx context.Context, in *pb.StartCustomMatchRequest) (*pb.StartCustomMatchResponse, error) {
-	var users []User
+	var userIDs []uint64
 
-	err := s.db.RunInTransaction(func(tx *pg.Tx) error {
+	err := s.db.Transaction(func(tx *gorm.DB) error {
 		var deletedGroup Group
 
-		res, err := tx.QueryOne(&deletedGroup, "SELECT * FROM groups WHERE id = ? AND leader = ?", in.GetGroupId(), in.GetUserId())
-		if err != nil {
-			return err
+		res := tx.First(&deletedGroup, "id = ? AND leader = ?", in.GetGroupId(), in.GetUserId())
+		if res.Error != nil {
+			return res.Error
 		}
-		if res.RowsAffected() != 1 {
+		if res.RowsAffected != 1 {
 			//user is not leader or group does not exist
 			return errors.New("todo")
 		}
 
-		_, err = tx.Query(&users, "SELECT * FROM users WHERE group_id = ?", in.GetGroupId())
-		if err != nil {
-			return err
-		}
-
-		var userIDs []uint64
-		for _, v := range users {
-			userIDs = append(userIDs, v.ID)
+		for _, v := range deletedGroup.Users {
+			userIDs = append(userIDs, v.UserID)
 		}
 		psm := PubSubMessage{
 			GroupID:   in.GetGroupId(),
@@ -274,35 +245,25 @@ func (s *customMatchServer) Start(ctx context.Context, in *pb.StartCustomMatchRe
 			MaxUsers:  deletedGroup.MaxUsers,
 			Users:     userIDs,
 			Started:   true,
-			Disbanded: false, 
+			Disbanded: false,
 		}
 		b, err := json.Marshal(&psm)
 		if err != nil {
 			return err
 		}
 
-		_, err = tx.Exec(fmt.Sprintf("NOTIFY default, '%v'", string(b)))
-		if err != nil {
-			return err
+		res = tx.Exec("NOTIFY default, '%v'", string(b))
+		if res.Error != nil {
+			return res.Error
 		}
 
 		g := Group{
 			ID: in.GetGroupId(),
 		}
-		if err := tx.Delete(&g); err != nil {
-			return err
-		}
-
-		_, err = tx.Model(&User{}).Where("group_id = ?", in.GetGroupId()).Delete()
-		return err
+		return tx.Delete(&g).Error
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	var userIDs []uint64
-	for _, v := range users {
-		userIDs = append(userIDs, v.ID)
 	}
 
 	return &pb.StartCustomMatchResponse{
@@ -319,22 +280,16 @@ func (s *customMatchServer) Close() {
 }
 
 func (s *customMatchServer) sendNotification(groupID int64, disbanded, started bool) error {
-	return s.db.RunInTransaction(func(tx *pg.Tx) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
 		var g Group
-		_, err := tx.QueryOne(&g, "SELECT * FROM groups WHERE id = ?", groupID)
-		if err != nil {
-			return err
-		}
-
-		var users []User
-		_, err = tx.Query(&users, "SELECT * FROM users WHERE group_id = ?", groupID)
-		if err != nil {
-			return err
+		res := tx.First(&g, "id = ?", groupID)
+		if res.Error != nil {
+			return res.Error
 		}
 
 		var userIDs []uint64
-		for _, v := range users {
-			userIDs = append(userIDs, v.ID)
+		for _, v := range g.Users {
+			userIDs = append(userIDs, v.UserID)
 		}
 
 		psm := PubSubMessage{
@@ -352,16 +307,17 @@ func (s *customMatchServer) sendNotification(groupID int64, disbanded, started b
 			return err
 		}
 
-		_, err = tx.Exec(fmt.Sprintf("NOTIFY default, '%v'", string(b)))
-		return err
+		return tx.Exec("NOTIFY default, '%v'", string(b)).Error
 	})
 }
 
 func (s *customMatchServer) handleNotifications(channelName string) {
-	ln := s.db.Listen(channelName)
+	ln := pq.NewListener("name", time.Minute, time.Minute, func(event pq.ListenerEventType, err error) {})
 	defer ln.Close()
 
-	ch := ln.Channel()
+	ln.Listen(channelName)
+
+	ch := ln.NotificationChannel()
 	for {
 		notif, ok := <-ch
 		if !ok {
@@ -369,7 +325,7 @@ func (s *customMatchServer) handleNotifications(channelName string) {
 		}
 
 		var psm PubSubMessage
-		if err := json.Unmarshal([]byte(notif.Payload), &psm); err != nil {
+		if err := json.Unmarshal([]byte(notif.Extra), &psm); err != nil {
 			continue
 		}
 

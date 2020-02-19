@@ -1,15 +1,15 @@
 package app
 
 type Group struct {
-	ID         int64
-	Leader     uint64 `pg:unique`
-	Name       string
-	Password   string
-	MaxUsers   uint32
-	TotalUsers uint32
+	ID       int64 `gorm:"AUTO_INCREMENT;NOT NULL;PRIMARY_KEY"`
+	Leader   uint64
+	Name     string
+	Password string
+	MaxUsers uint32
+	Users    []User `gorm:"foreignkey:GroupID"`
 }
 
 type User struct {
-	ID      uint64
+	UserID  uint64 `gorm:"PRIMARY_KEY;AUTO_INCREMENT:false"`
 	GroupID int64
 }
