@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/4726/game/services/matchmaking/custom-match/config"
@@ -46,7 +47,7 @@ func newCustomMatchServer(cfg config.Config) (*customMatchServer, error) {
 
 	s := &customMatchServer{db, cfg, map[int64][]chan PubSubMessage{}}
 
-	go s.handleNotifications("default")
+	go s.handleNotifications("groups")
 
 	return s, nil
 }
@@ -59,7 +60,7 @@ func (s *customMatchServer) Add(in *pb.AddCustomMatchRequest, outStream pb.Custo
 		MaxUsers: in.GetMaxUsers(),
 	}
 
-	err := s.db.Transaction(func(tx *gorm.DB) error {
+	if err := s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&g).Error; err != nil {
 			return err
 		}
@@ -70,18 +71,18 @@ func (s *customMatchServer) Add(in *pb.AddCustomMatchRequest, outStream pb.Custo
 		}
 
 		return tx.Create(&u).Error
-	})
-	if err != nil {
+	}); err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	out := &pb.AddCustomMatchResponse{
-		Users:    []uint64{},
+	resp := &pb.AddCustomMatchResponse{
+		Users:    []uint64{in.GetLeader()},
 		MaxUsers: g.MaxUsers,
 		Leader:   g.Leader,
+		GroupId:  g.ID,
 	}
 
-	if err := outStream.Send(out); err != nil {
+	if err := outStream.Send(resp); err != nil {
 		return err
 	}
 
@@ -98,6 +99,7 @@ func (s *customMatchServer) Add(in *pb.AddCustomMatchRequest, outStream pb.Custo
 			Users:    psm.Users,
 			MaxUsers: psm.MaxUsers,
 			Leader:   psm.Leader,
+			GroupId:  psm.GroupID,
 		}
 
 		if err := outStream.Send(out); err != nil {
@@ -107,7 +109,7 @@ func (s *customMatchServer) Add(in *pb.AddCustomMatchRequest, outStream pb.Custo
 }
 
 func (s *customMatchServer) Delete(ctx context.Context, in *pb.DeleteCustomMatchRequest) (*pb.DeleteCustomMatchResponse, error) {
-	res := s.db.Delete(&Group{}, "id = ? AND leader = ?", in.GetGroupId(), in.GetUserId())
+	res := s.db.Where("id = ? AND leader = ?", in.GetGroupId(), in.GetUserId()).Delete(Group{})
 	if res.Error != nil {
 		return nil, status.Error(codes.Internal, res.Error.Error())
 	}
@@ -195,6 +197,7 @@ func (s *customMatchServer) Join(in *pb.JoinCustomMatchRequest, outStream pb.Cus
 			Users:    psm.Users,
 			MaxUsers: psm.MaxUsers,
 			Leader:   psm.Leader,
+			GroupId:  psm.GroupID,
 		}
 
 		if err := outStream.Send(out); err != nil {
@@ -207,9 +210,14 @@ func (s *customMatchServer) Leave(ctx context.Context, in *pb.LeaveCustomMatchRe
 	u := User{
 		UserID: in.GetUserId(),
 	}
-	if err := s.db.Delete(&u).Error; err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	res := s.db.Delete(&u)
+	if res.Error != nil {
+		return nil, status.Error(codes.Internal, res.Error.Error())
 	}
+	if res.RowsAffected != 1 {
+		return nil, errors.New("todo")
+	}
+
 	groupID := u.GroupID
 
 	if err := s.sendNotification(groupID, false, false); err != nil {
@@ -252,8 +260,7 @@ func (s *customMatchServer) Start(ctx context.Context, in *pb.StartCustomMatchRe
 			return err
 		}
 
-		res = tx.Exec("NOTIFY default, '%v'", string(b))
-		if res.Error != nil {
+		if err := tx.Exec(fmt.Sprintf("NOTIFY groups, '%v'", string(b))).Error; err != nil {
 			return res.Error
 		}
 
@@ -282,8 +289,21 @@ func (s *customMatchServer) Close() {
 func (s *customMatchServer) sendNotification(groupID int64, disbanded, started bool) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var g Group
-		res := tx.First(&g, "id = ?", groupID)
+		res := tx.Preload("Users").First(&g, "id = ?", groupID)
 		if res.Error != nil {
+			if res.Error == gorm.ErrRecordNotFound {
+				psm := PubSubMessage{
+					GroupID:   groupID,
+					Started:   started,
+					Disbanded: disbanded,
+				}
+				b, err := json.Marshal(&psm)
+				if err != nil {
+					return err
+				}
+
+				return tx.Exec(fmt.Sprintf("NOTIFY groups, '%v'", string(b))).Error
+			}
 			return res.Error
 		}
 
@@ -307,12 +327,12 @@ func (s *customMatchServer) sendNotification(groupID int64, disbanded, started b
 			return err
 		}
 
-		return tx.Exec("NOTIFY default, '%v'", string(b)).Error
+		return tx.Exec(fmt.Sprintf("NOTIFY groups, '%v'", string(b))).Error
 	})
 }
 
 func (s *customMatchServer) handleNotifications(channelName string) {
-	ln := pq.NewListener("name", time.Minute, time.Minute, func(event pq.ListenerEventType, err error) {})
+	ln := pq.NewListener("user=postgres password=postgres", time.Second*10, time.Minute, func(event pq.ListenerEventType, err error) {})
 	defer ln.Close()
 
 	ln.Listen(channelName)

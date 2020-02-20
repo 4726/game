@@ -21,6 +21,7 @@ message AddCustomMatchResponse {
     repeated uint64 users = 1;
     uint32 max_users = 2;
     uint64 leader = 3;
+    int64 group_id = 4;
 }
 
 message DeleteCustomMatchRequest {
@@ -51,13 +52,14 @@ message CustomMatchGroup {
 message JoinCustomMatchRequest {
     uint64 user_id = 1;
     int64 group_id = 2;
-    uint64 group_password = 3;
+    string group_password = 3;
 }
 
 message JoinCustomMatchResponse {
     repeated uint64 users = 1;
     uint32 max_users = 2;
     uint64 leader = 3;
+    int64 group_id = 4;
 }
 
 message LeaveCustomMatchRequest {
