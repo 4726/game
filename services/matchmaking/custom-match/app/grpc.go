@@ -100,6 +100,7 @@ func (s *customMatchServer) Add(in *pb.AddCustomMatchRequest, outStream pb.Custo
 			MaxUsers: psm.MaxUsers,
 			Leader:   psm.Leader,
 			GroupId:  psm.GroupID,
+			Started:  psm.Started,
 		}
 
 		if err := outStream.Send(out); err != nil {
@@ -198,6 +199,7 @@ func (s *customMatchServer) Join(in *pb.JoinCustomMatchRequest, outStream pb.Cus
 			MaxUsers: psm.MaxUsers,
 			Leader:   psm.Leader,
 			GroupId:  psm.GroupID,
+			Started:  psm.Started,
 		}
 
 		if err := outStream.Send(out); err != nil {
@@ -233,7 +235,7 @@ func (s *customMatchServer) Start(ctx context.Context, in *pb.StartCustomMatchRe
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		var deletedGroup Group
 
-		res := tx.First(&deletedGroup, "id = ? AND leader = ?", in.GetGroupId(), in.GetUserId())
+		res := tx.Preload("Users").First(&deletedGroup, "id = ? AND leader = ?", in.GetGroupId(), in.GetUserId())
 		if res.Error != nil {
 			return res.Error
 		}

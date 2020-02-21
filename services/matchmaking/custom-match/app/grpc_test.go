@@ -1,5 +1,7 @@
 package app
 
+//sometimes panics, think maybe because teardown doesnt close child goroutines
+
 import (
 	"context"
 	"testing"
@@ -49,6 +51,52 @@ func newTest(t testing.TB, conf ...config.Config) *test {
 
 func (te *test) teardown() {
 	te.service.Close()
+}
+
+func (te *test) fillData(t testing.TB) []Group {
+	in := &pb.AddCustomMatchRequest{
+		Leader:   1,
+		Name:     "game",
+		Password: "",
+		MaxUsers: 10,
+	}
+	_, err := te.add(t, in)
+	assert.NoError(t, err)
+
+	in2 := &pb.AddCustomMatchRequest{
+		Leader:   2,
+		Name:     "game2",
+		Password: "qwe",
+		MaxUsers: 10,
+	}
+	resp2, err := te.add(t, in2)
+	assert.NoError(t, err)
+	go te.join(t, 3, resp2[0].GetGroupId(), "qwe")
+
+	in3 := &pb.AddCustomMatchRequest{
+		Leader:   4,
+		Name:     "game3",
+		Password: "",
+		MaxUsers: 10,
+	}
+	resp3, err := te.add(t, in3)
+	assert.NoError(t, err)
+	for i := 5; i < 14; i++ {
+		go te.join(t, uint64(i), resp3[0].GetGroupId(), "")
+	}
+	time.Sleep(time.Second * 5)
+
+	var groups []Group
+	err = te.service.s.db.Preload("Users").Find(&groups).Error
+	assert.NoError(t, err)
+	return groups
+}
+
+func (te *test) queryGroups(t testing.TB) []Group {
+	var groups []Group
+	err := te.service.s.db.Preload("Users").Find(&groups).Error
+	assert.NoError(t, err)
+	return groups
 }
 
 func (te *test) add(t testing.TB, in *pb.AddCustomMatchRequest) ([]*pb.AddCustomMatchResponse, error) {
@@ -112,48 +160,46 @@ func TestServiceAddLeaderAlreadyHasGroup(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
+	groups := te.fillData(t)
+
 	in := &pb.AddCustomMatchRequest{
-		Leader:   1,
+		Leader:   groups[0].Leader,
 		Name:     "game",
 		Password: "",
 		MaxUsers: 10,
 	}
-	te.add(t, in)
-
 	_, err := te.add(t, in)
 	assert.Error(t, err)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceAddLeaderAlreadyInGroup(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
-	addIn := &pb.AddCustomMatchRequest{
-		Leader:   1,
-		Name:     "game",
-		Password: "",
-		MaxUsers: 10,
-	}
-	resps, _ := te.add(t, addIn)
-
-	te.join(t, 2, resps[0].GetGroupId(), "")
+	groups := te.fillData(t)
 
 	in := &pb.AddCustomMatchRequest{
-		Leader:   2,
+		Leader:   groups[2].Users[1].UserID,
 		Name:     "game",
 		Password: "",
 		MaxUsers: 10,
 	}
 	_, err := te.add(t, in)
 	assert.Error(t, err)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceAddStart(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
+	groups := te.fillData(t)
+
 	in := &pb.AddCustomMatchRequest{
-		Leader:   1,
+		Leader:   101,
 		Name:     "game",
 		Password: "",
 		MaxUsers: 10,
@@ -168,98 +214,133 @@ func TestServiceAddStart(t *testing.T) {
 	}()
 	time.Sleep(time.Second * 2)
 
+	groupID := groups[len(groups)-1].ID + 1
+
 	r1 := &pb.AddCustomMatchResponse{
-		Users:    []uint64{1},
+		Users:    []uint64{in.GetLeader()},
 		MaxUsers: in.GetMaxUsers(),
 		Leader:   in.GetLeader(),
-		GroupId:  1,
+		GroupId:  groupID,
 	}
 
 	expectedResps := []*pb.AddCustomMatchResponse{r1}
-	for i := 2; i < 11; i++ {
-		go te.join(t, uint64(i), 1, "")
+	for i := 102; i < 111; i++ {
+		go te.join(t, uint64(i), groupID, "")
 
 		var expectedUsers []uint64
-		for j := 1; j < i+1; j++ {
+		for j := 101; j < i+1; j++ {
 			expectedUsers = append(expectedUsers, uint64(j))
 		}
 		r := &pb.AddCustomMatchResponse{
 			Users:    expectedUsers,
 			MaxUsers: in.GetMaxUsers(),
 			Leader:   in.GetLeader(),
-			GroupId:  1,
+			GroupId:  groupID,
 		}
 		expectedResps = append(expectedResps, r)
 		time.Sleep(time.Second * 2)
 	}
 
-	// need to call start
+	startIn := &pb.StartCustomMatchRequest{
+		UserId:  in.GetLeader(),
+		GroupId: groupID,
+	}
+	te.c.Start(context.Background(), startIn)
+
+	r2 := &pb.AddCustomMatchResponse{
+		Users:    []uint64{101, 102, 103, 104, 105, 106, 107, 108, 109, 110},
+		MaxUsers: in.GetMaxUsers(),
+		Leader:   in.GetLeader(),
+		GroupId:  groupID,
+		Started:  true,
+	}
+	expectedResps = append(expectedResps, r2)
 
 	wg.Wait()
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResps, resps)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceAdd(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
+	groups := te.fillData(t)
+
 	in := &pb.AddCustomMatchRequest{
-		Leader:   1,
+		Leader:   100,
 		Name:     "game",
 		Password: "",
 		MaxUsers: 10,
 	}
 	resps, err := te.add(t, in)
 	assert.NoError(t, err)
+
+	expectedGroupID := groups[len(groups)-1].ID + 1
 	r1 := &pb.AddCustomMatchResponse{
-		Users:    []uint64{1},
+		Users:    []uint64{100},
 		MaxUsers: in.GetMaxUsers(),
 		Leader:   in.GetLeader(),
-		GroupId:  1,
+		GroupId:  expectedGroupID,
 	}
 
 	assert.Equal(t, []*pb.AddCustomMatchResponse{r1}, resps)
+	groupsAfter := te.queryGroups(t)
+
+	expectedGroup := Group{
+		ID:       expectedGroupID,
+		Leader:   in.GetLeader(),
+		Name:     in.GetName(),
+		Password: in.GetPassword(),
+		MaxUsers: in.GetMaxUsers(),
+		Users:    []User{User{100, expectedGroupID}},
+	}
+	groups = append(groups, expectedGroup)
+	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceDeleteDoesNotExist(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
+	groups := te.fillData(t)
+
 	in := &pb.DeleteCustomMatchRequest{
-		UserId:  1,
-		GroupId: 1,
+		UserId:  100,
+		GroupId: 20,
 	}
 	_, err := te.c.Delete(context.Background(), in)
 	assert.Error(t, err)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceDeleteNotLeader(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
-	addIn := &pb.AddCustomMatchRequest{
-		Leader:   1,
-		Name:     "game",
-		Password: "",
-		MaxUsers: 10,
-	}
-	resps, _ := te.add(t, addIn)
+	groups := te.fillData(t)
 
 	in := &pb.DeleteCustomMatchRequest{
-		UserId:  2,
-		GroupId: resps[0].GetGroupId(),
+		UserId:  groups[0].Leader + 100,
+		GroupId: groups[0].ID,
 	}
 	_, err := te.c.Delete(context.Background(), in)
 	assert.Error(t, err)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceDelete(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
+	groups := te.fillData(t)
+
 	addIn := &pb.AddCustomMatchRequest{
-		Leader:   1,
+		Leader:   100,
 		Name:     "game",
 		Password: "",
 		MaxUsers: 10,
@@ -267,11 +348,13 @@ func TestServiceDelete(t *testing.T) {
 	resps, _ := te.add(t, addIn)
 
 	in := &pb.DeleteCustomMatchRequest{
-		UserId:  1,
+		UserId:  100,
 		GroupId: resps[0].GetGroupId(),
 	}
 	_, err := te.c.Delete(context.Background(), in)
 	assert.NoError(t, err)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceGetAllNone(t *testing.T) {
@@ -282,158 +365,149 @@ func TestServiceGetAllNone(t *testing.T) {
 	resp, err := te.c.GetAll(context.Background(), in)
 	assert.NoError(t, err)
 	assert.Len(t, resp.Groups, 0)
+	groups := te.queryGroups(t)
+	assert.Len(t, groups, 0)
 }
 
 func TestServiceGetAll(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
-	addIn := &pb.AddCustomMatchRequest{
-		Leader:   1,
-		Name:     "game",
-		Password: "",
-		MaxUsers: 10,
-	}
-	resps, _ := te.add(t, addIn)
-	te.join(t, 3, resps[0].GetGroupId(), "")
-	addIn = &pb.AddCustomMatchRequest{
-		Leader:   2,
-		Name:     "game2",
-		Password: "asd",
-		MaxUsers: 10,
-	}
-	resps2, _ := te.add(t, addIn)
+	groups := te.fillData(t)
 
 	in := &pb.GetAllCustomMatchRequest{Total: 100, Skip: 0}
 	resp, err := te.c.GetAll(context.Background(), in)
 	assert.NoError(t, err)
 	g1 := &pb.CustomMatchGroup{
-		GroupId:          resps[0].GetGroupId(),
-		Name:             "game",
-		Leader:           1,
+		GroupId:          groups[0].ID,
+		Name:             groups[0].Name,
+		Leader:           groups[0].Leader,
 		PasswordRequired: false,
-		MaxUsers:         10,
-		TotalUsers:       2,
+		MaxUsers:         groups[0].MaxUsers,
+		TotalUsers:       uint32(len(groups[0].Users)),
 	}
 	g2 := &pb.CustomMatchGroup{
-		GroupId:          resps2[0].GetGroupId(),
-		Name:             "game2",
-		Leader:           2,
+		GroupId:          groups[1].ID,
+		Name:             groups[1].Name,
+		Leader:           groups[1].Leader,
 		PasswordRequired: true,
-		MaxUsers:         10,
-		TotalUsers:       1,
+		MaxUsers:         groups[1].MaxUsers,
+		TotalUsers:       uint32(len(groups[1].Users)),
+	}
+	g3 := &pb.CustomMatchGroup{
+		GroupId:          groups[2].ID,
+		Name:             groups[2].Name,
+		Leader:           groups[2].Leader,
+		PasswordRequired: false,
+		MaxUsers:         groups[2].MaxUsers,
+		TotalUsers:       uint32(len(groups[2].Users)),
 	}
 	expectedResp := &pb.GetAllCustomMatchResponse{
-		Groups: []*pb.CustomMatchGroup{g1, g2},
+		Groups: []*pb.CustomMatchGroup{g1, g2, g3},
 	}
 	assert.Equal(t, expectedResp, resp)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceJoinDoesNotExist(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
-	_, err := te.join(t, 1, 1, "")
+	groups := te.fillData(t)
+
+	_, err := te.join(t, 100, 20, "")
 	assert.Error(t, err)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
 }
 
 // func TestServiceJoinWrongPassword(t *testing.T) {
 // 	te := newTest(t)
 // 	defer te.teardown()
 
-// 	addIn := &pb.AddCustomMatchRequest{
-// 		Leader:   1,
-// 		Name:     "game",
-// 		Password: "qwe",
-// 		MaxUsers: 10,
-// 	}
-// 	addResps, _ := te.add(t, addIn)
+// 	groups := te.fillData(t)
 
-// 	resps, err := te.join(t, 2, addResps[0].GetGroupId(), "asd")
+// 	resps, err := te.join(t, 100, groups[1].GetGroupId(), "qqq")
 // 	assert.Error(t, err)
+// 	groupsAfter := te.queryGroups(t)
+// 	assert.Equal(t, groups, groupsAfter)
 // }
 
 func TestServiceJoinPassword(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
-	addIn := &pb.AddCustomMatchRequest{
-		Leader:   1,
-		Name:     "game",
-		Password: "asd",
-		MaxUsers: 10,
-	}
-	addResps, _ := te.add(t, addIn)
+	groups := te.fillData(t)
 
-	resps, err := te.join(t, 2, addResps[0].GetGroupId(), "asd")
+	resps, err := te.join(t, 100, groups[1].ID, groups[1].Password)
 	assert.NoError(t, err)
 
 	r1 := &pb.JoinCustomMatchResponse{
-		Users:    []uint64{1, 2},
-		MaxUsers: addIn.MaxUsers,
-		Leader:   addIn.Leader,
-		GroupId:  resps[0].GetGroupId(),
+		Users:    []uint64{groups[1].Users[0].UserID, groups[1].Users[1].UserID, 100},
+		MaxUsers: groups[1].MaxUsers,
+		Leader:   groups[1].Leader,
+		GroupId:  groups[1].ID,
 	}
 	assert.Equal(t, []*pb.JoinCustomMatchResponse{r1}, resps)
+	groupsAfter := te.queryGroups(t)
+	updatedGroup := groups[1]
+	updatedGroup.Users = append(updatedGroup.Users, User{100, updatedGroup.ID})
+	groups[1] = updatedGroup
+	assert.Equal(t, groups, groupsAfter)
 }
 
 // func TestServiceJoinFull(t *testing.T) {
 // 	te := newTest(t)
 // 	defer te.teardown()
 
-// 	addIn := &pb.AddCustomMatchRequest{
-// 		Leader:   1,
-// 		Name:     "game",
-// 		Password: "",
-// 		MaxUsers: 10,
-// 	}
-// 	addResps, _ := te.add(t, addIn)
+// 	groups := te.fillData(t)
 
-// 	for i := 2; i < 11; i++ {
-// 		te.join(t, 2, addResps[0].GetGroupId(), "")
-// 	}
-
-// 	resps, err := te.join(t, 11, addResps[0].GetGroupId(), "")
+// 	resps, err := te.join(t, 100, groups[2].GetGroupId(), "")
 // 	assert.Error(t, err)
+// 	groupsAfter := te.queryGroups(t)
+// 	assert.Equal(t, groups, groupsAfter)
 // }
 
 func TestServiceJoinStart(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
+	groups := te.fillData(t)
+
 	in := &pb.AddCustomMatchRequest{
-		Leader:   1,
+		Leader:   101,
 		Name:     "game",
 		Password: "",
 		MaxUsers: 10,
 	}
 
-	addResps, _ := te.add(t, in)
-	groupID := addResps[0].GetGroupId()
+	te.add(t, in)
+	groupID := groups[len(groups)-1].ID + 1
 
 	var wg sync.WaitGroup
 	var resps []*pb.JoinCustomMatchResponse
 	var err error
 	wg.Add(1)
 	go func() {
-		resps, err = te.join(t, 2, groupID, "")
+		resps, err = te.join(t, 102, groupID, "")
 		wg.Done()
 	}()
 	time.Sleep(time.Second * 2)
 
 	r1 := &pb.JoinCustomMatchResponse{
-		Users:    []uint64{1, 2},
+		Users:    []uint64{101, 102},
 		MaxUsers: in.MaxUsers,
 		Leader:   in.Leader,
 		GroupId:  groupID,
 	}
 
 	expectedResps := []*pb.JoinCustomMatchResponse{r1}
-	for i := 3; i < 11; i++ {
+	for i := 103; i < 111; i++ {
 		go te.join(t, uint64(i), groupID, "")
 
 		var expectedUsers []uint64
-		for j := 1; j < i+1; j++ {
+		for j := 101; j < i+1; j++ {
 			expectedUsers = append(expectedUsers, uint64(j))
 		}
 		r := &pb.JoinCustomMatchResponse{
@@ -446,148 +520,154 @@ func TestServiceJoinStart(t *testing.T) {
 		time.Sleep(time.Second * 2)
 	}
 
-	// need to call start
+	startIn := &pb.StartCustomMatchRequest{
+		UserId:  in.GetLeader(),
+		GroupId: groupID,
+	}
+	te.c.Start(context.Background(), startIn)
+
+	r2 := &pb.JoinCustomMatchResponse{
+		Users:    []uint64{101, 102, 103, 104, 105, 106, 107, 108, 109, 110},
+		MaxUsers: in.GetMaxUsers(),
+		Leader:   in.GetLeader(),
+		GroupId:  groupID,
+		Started:  true,
+	}
+	expectedResps = append(expectedResps, r2)
 
 	wg.Wait()
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResps, resps)
+	groupsAfter := te.queryGroups(t)
+ 	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceJoin(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
-	addIn := &pb.AddCustomMatchRequest{
-		Leader:   1,
-		Name:     "game",
-		Password: "",
-		MaxUsers: 10,
-	}
-	addResps, _ := te.add(t, addIn)
+	groups := te.fillData(t)
 
-	resps, err := te.join(t, 2, addResps[0].GetGroupId(), "")
+	resps, err := te.join(t, 100, groups[0].ID, "")
 	assert.NoError(t, err)
 
 	r1 := &pb.JoinCustomMatchResponse{
-		Users:    []uint64{1, 2},
-		MaxUsers: addIn.MaxUsers,
-		Leader:   addIn.Leader,
-		GroupId:  resps[0].GetGroupId(),
+		Users:    []uint64{groups[0].Leader, 100},
+		MaxUsers: groups[0].MaxUsers,
+		Leader:   groups[0].Leader,
+		GroupId:  groups[0].ID,
 	}
 	assert.Equal(t, []*pb.JoinCustomMatchResponse{r1}, resps)
+	groupsAfter := te.queryGroups(t)
+	updatedGroup := groups[0]
+	updatedGroup.Users = append(updatedGroup.Users, User{100, updatedGroup.ID})
+	groups[0] = updatedGroup
+	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceLeaveGroupDoesNotExist(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
+	groups := te.fillData(t)
+
 	in := &pb.LeaveCustomMatchRequest{
-		UserId:  1,
-		GroupId: 1,
+		UserId:  100,
+		GroupId: 20,
 	}
 	_, err := te.c.Leave(context.Background(), in)
 	assert.Error(t, err)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceLeaveNotInGroup(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
-	addIn := &pb.AddCustomMatchRequest{
-		Leader:   1,
-		Name:     "game",
-		Password: "",
-		MaxUsers: 10,
-	}
-	addResps, _ := te.add(t, addIn)
+	groups := te.fillData(t)
 
 	in := &pb.LeaveCustomMatchRequest{
-		UserId:  2,
-		GroupId: addResps[0].GetGroupId(),
+		UserId:  100,
+		GroupId: groups[0].ID,
 	}
 	_, err := te.c.Leave(context.Background(), in)
 	assert.Error(t, err)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceLeave(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
-	addIn := &pb.AddCustomMatchRequest{
-		Leader:   1,
-		Name:     "game",
-		Password: "",
-		MaxUsers: 10,
-	}
-	addResps, _ := te.add(t, addIn)
+	groups := te.fillData(t)
 
-	te.join(t, 2, addResps[0].GetGroupId(), "")
+	_, err := te.join(t, 100, groups[0].ID, "")
+	assert.NoError(t, err)
 
 	in := &pb.LeaveCustomMatchRequest{
-		UserId:  2,
-		GroupId: addResps[0].GetGroupId(),
+		UserId:  100,
+		GroupId: groups[0].ID,
 	}
-	_, err := te.c.Leave(context.Background(), in)
+	_, err = te.c.Leave(context.Background(), in)
 	assert.NoError(t, err)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceStartGroupDoesNotExist(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
+	groups := te.fillData(t)
+
 	in := &pb.StartCustomMatchRequest{
-		UserId:  1,
-		GroupId: 1,
+		UserId:  100,
+		GroupId: 20,
 	}
 	_, err := te.c.Start(context.Background(), in)
 	assert.Error(t, err)
+
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceStartNotLeader(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
-	addIn := &pb.AddCustomMatchRequest{
-		Leader:   1,
-		Name:     "game",
-		Password: "",
-		MaxUsers: 10,
-	}
-	addResps, _ := te.add(t, addIn)
-	te.join(t, 2, addResps[0].GetGroupId(), "")
+	groups := te.fillData(t)
 
 	in := &pb.StartCustomMatchRequest{
-		UserId:  2,
-		GroupId: addResps[0].GetGroupId(),
+		UserId:  100,
+		GroupId: groups[0].ID,
 	}
 	_, err := te.c.Start(context.Background(), in)
 	assert.Error(t, err)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
 }
-
 
 func TestServiceStart(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
 
-	addIn := &pb.AddCustomMatchRequest{
-		Leader:   1,
-		Name:     "game",
-		Password: "",
-		MaxUsers: 10,
-	}
-	addResps, _ := te.add(t, addIn)
+	groups := te.fillData(t)
 
 	in := &pb.StartCustomMatchRequest{
-		UserId:  1,
-		GroupId: addResps[0].GetGroupId(),
+		UserId:  groups[0].Leader,
+		GroupId: groups[0].ID,
 	}
 	resp, err := te.c.Start(context.Background(), in)
 	assert.NoError(t, err)
 	expectedResp := &pb.StartCustomMatchResponse{
-		Users: []uint64{1},
-		Leader: addIn.Leader,
-		GroupId: addResps[0].GetGroupId(),
+		Users:   []uint64{groups[0].Leader},
+		Leader:  groups[0].Leader,
+		GroupId: groups[0].ID,
 	}
 
 	assert.Equal(t, expectedResp, resp)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups[1:], groupsAfter)
 }

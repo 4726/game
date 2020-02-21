@@ -22,6 +22,7 @@ message AddCustomMatchResponse {
     uint32 max_users = 2;
     uint64 leader = 3;
     int64 group_id = 4;
+    bool started = 5;
 }
 
 message DeleteCustomMatchRequest {
@@ -60,6 +61,7 @@ message JoinCustomMatchResponse {
     uint32 max_users = 2;
     uint64 leader = 3;
     int64 group_id = 4;
+    bool started = 5;
 }
 
 message LeaveCustomMatchRequest {
