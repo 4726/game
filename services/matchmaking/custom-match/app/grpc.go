@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/4726/game/services/matchmaking/custom-match/config"
 	"github.com/4726/game/services/matchmaking/custom-match/pb"
@@ -35,6 +36,14 @@ type PubSubMessage struct {
 	Disbanded bool
 }
 
+var (
+	ErrNoLeaderPrivileges = errors.New("user is not leader of group")
+	ErrGroupFull          = errors.New("group full")
+	ErrGroupDoesNotExist  = errors.New("group does not exist or password is invalid")
+	ErrUserAlreadyInGroup = errors.New("user already in group")
+	ErrUserNotInGroup     = errors.New("user not in group")
+)
+
 func newCustomMatchServer(cfg config.Config) (*customMatchServer, error) {
 	db, err := gorm.Open("postgres", "user=postgres password=postgres")
 	if err != nil {
@@ -48,8 +57,8 @@ func newCustomMatchServer(cfg config.Config) (*customMatchServer, error) {
 	db.Model(&User{}).AddForeignKey("group_id", "groups(id)", "CASCADE", "CASCADE")
 
 	s := &customMatchServer{
-		db: db, 
-		cfg: cfg, 
+		db:     db,
+		cfg:    cfg,
 		groups: map[int64][]chan PubSubMessage{},
 	}
 
@@ -68,7 +77,7 @@ func (s *customMatchServer) Add(in *pb.AddCustomMatchRequest, outStream pb.Custo
 
 	if err := s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&g).Error; err != nil {
-			return err
+			return status.Error(codes.Internal, err.Error())
 		}
 
 		u := User{
@@ -78,6 +87,9 @@ func (s *customMatchServer) Add(in *pb.AddCustomMatchRequest, outStream pb.Custo
 
 		return tx.Create(&u).Error
 	}); err != nil {
+		if strings.Contains(err.Error(), "pq: duplicate key value violates unique constraint") {
+			return status.Error(codes.FailedPrecondition, ErrUserAlreadyInGroup.Error())
+		}
 		return status.Error(codes.Internal, err.Error())
 	}
 
@@ -124,7 +136,7 @@ func (s *customMatchServer) Delete(ctx context.Context, in *pb.DeleteCustomMatch
 	}
 
 	if res.RowsAffected != 1 {
-		return nil, errors.New("todo")
+		return nil, status.Error(codes.FailedPrecondition, ErrNoLeaderPrivileges.Error())
 	}
 
 	if err := s.sendNotification(in.GetGroupId(), false, false); err != nil {
@@ -190,24 +202,26 @@ func (s *customMatchServer) Join(in *pb.JoinCustomMatchRequest, outStream pb.Cus
 
 	if err := s.db.Transaction(func(tx *gorm.DB) error {
 		var group Group
-		res := tx.Preload("Users").First(&group, "id = ? AND password = ?", in.GetGroupId(), in.GetGroupPassword())
+		res := tx.First(&group, "id = ? AND password = ?", in.GetGroupId(), in.GetGroupPassword())
 		if res.Error != nil {
-			return res.Error
+			if res.Error == gorm.ErrRecordNotFound {
+				return status.Error(codes.FailedPrecondition, ErrGroupDoesNotExist.Error())
+			}
+			return status.Error(codes.Internal, res.Error.Error())
 		}
 
 		res = tx.Exec("INSERT INTO users (user_id, group_id) SELECT ?, ? FROM users WHERE group_id = ? HAVING count(*) < ?;", in.GetUserId(), in.GetGroupId(), in.GetGroupId(), group.MaxUsers)
 		if res.Error != nil {
-			return res.Error
+			return status.Error(codes.Internal, res.Error.Error())
 		}
 
 		if res.RowsAffected != 1 {
-			return errors.New("full")
+			return status.Error(codes.FailedPrecondition, ErrGroupFull.Error())
 		}
 		return nil
 	}); err != nil {
-		return status.Error(codes.Internal, err.Error())
+		return err
 	}
-
 
 	if err := s.sendNotification(in.GetGroupId(), false, false); err != nil {
 		return status.Error(codes.Internal, err.Error())
@@ -242,7 +256,7 @@ func (s *customMatchServer) Leave(ctx context.Context, in *pb.LeaveCustomMatchRe
 		return nil, status.Error(codes.Internal, res.Error.Error())
 	}
 	if res.RowsAffected != 1 {
-		return nil, errors.New("todo")
+		return nil, status.Error(codes.FailedPrecondition, ErrUserNotInGroup.Error())
 	}
 
 	groupID := u.GroupID
@@ -262,11 +276,13 @@ func (s *customMatchServer) Start(ctx context.Context, in *pb.StartCustomMatchRe
 
 		res := tx.Preload("Users").First(&deletedGroup, "id = ? AND leader = ?", in.GetGroupId(), in.GetUserId())
 		if res.Error != nil {
-			return res.Error
+			if res.Error == gorm.ErrRecordNotFound {
+				return status.Error(codes.FailedPrecondition, ErrNoLeaderPrivileges.Error())
+			}
+			return status.Error(codes.Internal, res.Error.Error())
 		}
 		if res.RowsAffected != 1 {
-			//user is not leader or group does not exist
-			return errors.New("todo")
+			return status.Error(codes.FailedPrecondition, ErrNoLeaderPrivileges.Error())
 		}
 
 		for _, v := range deletedGroup.Users {
@@ -284,20 +300,23 @@ func (s *customMatchServer) Start(ctx context.Context, in *pb.StartCustomMatchRe
 		}
 		b, err := json.Marshal(&psm)
 		if err != nil {
-			return err
+			return status.Error(codes.Internal, err.Error())
 		}
 
 		if err := tx.Exec(fmt.Sprintf("NOTIFY groups, '%v'", string(b))).Error; err != nil {
-			return res.Error
+			return status.Error(codes.Internal, err.Error())
 		}
 
 		g := Group{
 			ID: in.GetGroupId(),
 		}
-		return tx.Delete(&g).Error
+		if err := tx.Delete(&g).Error; err != nil {
+			return status.Error(codes.Internal, err.Error())
+		}
+		return nil
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
 	return &pb.StartCustomMatchResponse{

@@ -12,6 +12,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type test struct {
@@ -119,7 +121,7 @@ func (te *test) add(t testing.TB, in *pb.AddCustomMatchRequest) ([]*pb.AddCustom
 
 	for {
 		select {
-		case <- done:
+		case <-done:
 			return resps, nil
 		case <-time.After(time.Second * 5):
 			return resps, nil
@@ -155,7 +157,7 @@ func (te *test) join(t testing.TB, userID uint64, groupID int64, pass string) ([
 
 	for {
 		select {
-		case <- done:
+		case <-done:
 			return resps, nil
 		case <-time.After(time.Second * 5):
 			return resps, nil
@@ -181,7 +183,7 @@ func TestServiceAddLeaderAlreadyHasGroup(t *testing.T) {
 		MaxUsers: 10,
 	}
 	_, err := te.add(t, in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, ErrUserAlreadyInGroup.Error()), err)
 	groupsAfter := te.queryGroups(t)
 	assert.Equal(t, groups, groupsAfter)
 }
@@ -199,7 +201,7 @@ func TestServiceAddLeaderAlreadyInGroup(t *testing.T) {
 		MaxUsers: 10,
 	}
 	_, err := te.add(t, in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, ErrUserAlreadyInGroup.Error()), err)
 	groupsAfter := te.queryGroups(t)
 	assert.Equal(t, groups, groupsAfter)
 }
@@ -324,7 +326,7 @@ func TestServiceDeleteDoesNotExist(t *testing.T) {
 		GroupId: 20,
 	}
 	_, err := te.c.Delete(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, ErrNoLeaderPrivileges.Error()), err)
 	groupsAfter := te.queryGroups(t)
 	assert.Equal(t, groups, groupsAfter)
 }
@@ -340,7 +342,7 @@ func TestServiceDeleteNotLeader(t *testing.T) {
 		GroupId: groups[0].ID,
 	}
 	_, err := te.c.Delete(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, ErrNoLeaderPrivileges.Error()), err)
 	groupsAfter := te.queryGroups(t)
 	assert.Equal(t, groups, groupsAfter)
 }
@@ -429,7 +431,7 @@ func TestServiceJoinDoesNotExist(t *testing.T) {
 	groups := te.fillData(t)
 
 	_, err := te.join(t, 100, 20, "")
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, ErrGroupDoesNotExist.Error()), err)
 	groupsAfter := te.queryGroups(t)
 	assert.Equal(t, groups, groupsAfter)
 }
@@ -441,7 +443,7 @@ func TestServiceJoinWrongPassword(t *testing.T) {
 	groups := te.fillData(t)
 
 	_, err := te.join(t, 100, groups[1].ID, "qqq")
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, ErrGroupDoesNotExist.Error()), err)
 	groupsAfter := te.queryGroups(t)
 	assert.Equal(t, groups, groupsAfter)
 }
@@ -476,7 +478,7 @@ func TestServiceJoinFull(t *testing.T) {
 	groups := te.fillData(t)
 
 	_, err := te.join(t, 100, groups[2].ID, "")
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, ErrGroupFull.Error()), err)
 	groupsAfter := te.queryGroups(t)
 	assert.Equal(t, groups, groupsAfter)
 }
@@ -551,7 +553,7 @@ func TestServiceJoinStart(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResps, resps)
 	groupsAfter := te.queryGroups(t)
- 	assert.Equal(t, groups, groupsAfter)
+	assert.Equal(t, groups, groupsAfter)
 }
 
 func TestServiceJoin(t *testing.T) {
@@ -588,7 +590,7 @@ func TestServiceLeaveGroupDoesNotExist(t *testing.T) {
 		GroupId: 20,
 	}
 	_, err := te.c.Leave(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, ErrUserNotInGroup.Error()), err)
 	groupsAfter := te.queryGroups(t)
 	assert.Equal(t, groups, groupsAfter)
 }
@@ -604,7 +606,7 @@ func TestServiceLeaveNotInGroup(t *testing.T) {
 		GroupId: groups[0].ID,
 	}
 	_, err := te.c.Leave(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, ErrUserNotInGroup.Error()), err)
 	groupsAfter := te.queryGroups(t)
 	assert.Equal(t, groups, groupsAfter)
 }
@@ -639,7 +641,7 @@ func TestServiceStartGroupDoesNotExist(t *testing.T) {
 		GroupId: 20,
 	}
 	_, err := te.c.Start(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, ErrNoLeaderPrivileges.Error()), err)
 
 	groupsAfter := te.queryGroups(t)
 	assert.Equal(t, groups, groupsAfter)
@@ -656,7 +658,7 @@ func TestServiceStartNotLeader(t *testing.T) {
 		GroupId: groups[0].ID,
 	}
 	_, err := te.c.Start(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, ErrNoLeaderPrivileges.Error()), err)
 	groupsAfter := te.queryGroups(t)
 	assert.Equal(t, groups, groupsAfter)
 }
@@ -682,4 +684,25 @@ func TestServiceStart(t *testing.T) {
 	assert.Equal(t, expectedResp, resp)
 	groupsAfter := te.queryGroups(t)
 	assert.Equal(t, groups[1:], groupsAfter)
+}
+
+func TestServiceTLSInvalidPath(t *testing.T) {
+	cfg := config.Config{
+		Metrics: config.MetricsConfig{14001, "/metrics"},
+		TLS:     config.TLSConfig{"crt.pem", "key.pem"},
+	}
+
+	_, err := NewService(cfg)
+	assert.Error(t, err)
+}
+
+func TestServiceTLS(t *testing.T) {
+	cfg := config.Config{
+		Metrics: config.MetricsConfig{14001, "/metrics"},
+		TLS:     config.TLSConfig{"../../../../tests/tls/localhost.crt", "../../../../tests/tls/localhost.key"},
+	}
+
+	service, err := NewService(cfg)
+	assert.NoError(t, err)
+	defer service.Close()
 }
