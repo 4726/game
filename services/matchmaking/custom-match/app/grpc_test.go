@@ -1,7 +1,5 @@
 package app
 
-//sometimes panics, think maybe because teardown doesnt close child goroutines
-
 import (
 	"context"
 	"testing"
@@ -19,6 +17,7 @@ import (
 type test struct {
 	c       pb.CustomMatchClient
 	service *Service
+	doneChs []chan struct{}
 }
 
 func newTest(t testing.TB, conf ...config.Config) *test {
@@ -46,10 +45,13 @@ func newTest(t testing.TB, conf ...config.Config) *test {
 	service.s.db.Exec("TRUNCATE users, groups")
 	service.s.db.Exec("ALTER SEQUENCE groups_id_seq RESTART WITH 1")
 
-	return &test{c, service}
+	return &test{c, service, []chan struct{}{}}
 }
 
 func (te *test) teardown() {
+	for _, v := range te.doneChs {
+		v <- struct{}{}
+	}
 	te.service.Close()
 }
 
@@ -112,8 +114,13 @@ func (te *test) add(t testing.TB, in *pb.AddCustomMatchRequest) ([]*pb.AddCustom
 		}
 	}()
 
+	done := make(chan struct{}, 1)
+	te.doneChs = append(te.doneChs, done)
+
 	for {
 		select {
+		case <- done:
+			return resps, nil
 		case <-time.After(time.Second * 5):
 			return resps, nil
 		case msg := <-ch:
@@ -143,8 +150,13 @@ func (te *test) join(t testing.TB, userID uint64, groupID int64, pass string) ([
 		}
 	}()
 
+	done := make(chan struct{}, 1)
+	te.doneChs = append(te.doneChs, done)
+
 	for {
 		select {
+		case <- done:
+			return resps, nil
 		case <-time.After(time.Second * 5):
 			return resps, nil
 		case msg := <-ch:
@@ -422,17 +434,17 @@ func TestServiceJoinDoesNotExist(t *testing.T) {
 	assert.Equal(t, groups, groupsAfter)
 }
 
-// func TestServiceJoinWrongPassword(t *testing.T) {
-// 	te := newTest(t)
-// 	defer te.teardown()
+func TestServiceJoinWrongPassword(t *testing.T) {
+	te := newTest(t)
+	defer te.teardown()
 
-// 	groups := te.fillData(t)
+	groups := te.fillData(t)
 
-// 	resps, err := te.join(t, 100, groups[1].GetGroupId(), "qqq")
-// 	assert.Error(t, err)
-// 	groupsAfter := te.queryGroups(t)
-// 	assert.Equal(t, groups, groupsAfter)
-// }
+	_, err := te.join(t, 100, groups[1].ID, "qqq")
+	assert.Error(t, err)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
+}
 
 func TestServiceJoinPassword(t *testing.T) {
 	te := newTest(t)
@@ -457,17 +469,17 @@ func TestServiceJoinPassword(t *testing.T) {
 	assert.Equal(t, groups, groupsAfter)
 }
 
-// func TestServiceJoinFull(t *testing.T) {
-// 	te := newTest(t)
-// 	defer te.teardown()
+func TestServiceJoinFull(t *testing.T) {
+	te := newTest(t)
+	defer te.teardown()
 
-// 	groups := te.fillData(t)
+	groups := te.fillData(t)
 
-// 	resps, err := te.join(t, 100, groups[2].GetGroupId(), "")
-// 	assert.Error(t, err)
-// 	groupsAfter := te.queryGroups(t)
-// 	assert.Equal(t, groups, groupsAfter)
-// }
+	_, err := te.join(t, 100, groups[2].ID, "")
+	assert.Error(t, err)
+	groupsAfter := te.queryGroups(t)
+	assert.Equal(t, groups, groupsAfter)
+}
 
 func TestServiceJoinStart(t *testing.T) {
 	te := newTest(t)

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"sync"
 
 	"github.com/4726/game/services/matchmaking/custom-match/config"
 	"github.com/4726/game/services/matchmaking/custom-match/pb"
@@ -20,6 +21,7 @@ type customMatchServer struct {
 	db     *gorm.DB
 	cfg    config.Config
 	groups map[int64][]chan PubSubMessage
+	sync.Mutex
 }
 
 type PubSubMessage struct {
@@ -45,7 +47,11 @@ func newCustomMatchServer(cfg config.Config) (*customMatchServer, error) {
 
 	db.Model(&User{}).AddForeignKey("group_id", "groups(id)", "CASCADE", "CASCADE")
 
-	s := &customMatchServer{db, cfg, map[int64][]chan PubSubMessage{}}
+	s := &customMatchServer{
+		db: db, 
+		cfg: cfg, 
+		groups: map[int64][]chan PubSubMessage{},
+	}
 
 	go s.handleNotifications("groups")
 
@@ -87,7 +93,9 @@ func (s *customMatchServer) Add(in *pb.AddCustomMatchRequest, outStream pb.Custo
 	}
 
 	ch := make(chan PubSubMessage, 1)
+	s.Lock()
 	s.groups[g.ID] = []chan PubSubMessage{ch}
+	s.Unlock()
 
 	for {
 		psm, ok := <-ch
@@ -156,6 +164,7 @@ func (s *customMatchServer) GetAll(ctx context.Context, in *pb.GetAllCustomMatch
 func (s *customMatchServer) Join(in *pb.JoinCustomMatchRequest, outStream pb.CustomMatch_JoinServer) error {
 	//do this first because not sure if can get row affected when running the update query
 	ch := make(chan PubSubMessage, 1)
+	s.Lock()
 	group, ok := s.groups[in.GetGroupId()]
 	if !ok {
 		s.groups[in.GetGroupId()] = []chan PubSubMessage{ch}
@@ -163,7 +172,10 @@ func (s *customMatchServer) Join(in *pb.JoinCustomMatchRequest, outStream pb.Cus
 		group = append(group, ch)
 		s.groups[in.GetGroupId()] = group
 	}
+	s.Unlock()
 	defer func() {
+		s.Lock()
+		defer s.Unlock()
 		group, ok := s.groups[in.GetGroupId()]
 		if ok {
 			for i, v := range group {
@@ -176,13 +188,26 @@ func (s *customMatchServer) Join(in *pb.JoinCustomMatchRequest, outStream pb.Cus
 		}
 	}()
 
-	u := User{
-		UserID:  in.GetUserId(),
-		GroupID: in.GetGroupId(),
-	}
-	if err := s.db.Create(&u).Error; err != nil {
+	if err := s.db.Transaction(func(tx *gorm.DB) error {
+		var group Group
+		res := tx.Preload("Users").First(&group, "id = ? AND password = ?", in.GetGroupId(), in.GetGroupPassword())
+		if res.Error != nil {
+			return res.Error
+		}
+
+		res = tx.Exec("INSERT INTO users (user_id, group_id) SELECT ?, ? FROM users WHERE group_id = ? HAVING count(*) < ?;", in.GetUserId(), in.GetGroupId(), in.GetGroupId(), group.MaxUsers)
+		if res.Error != nil {
+			return res.Error
+		}
+
+		if res.RowsAffected != 1 {
+			return errors.New("full")
+		}
+		return nil
+	}); err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
+
 
 	if err := s.sendNotification(in.GetGroupId(), false, false); err != nil {
 		return status.Error(codes.Internal, err.Error())
@@ -351,6 +376,7 @@ func (s *customMatchServer) handleNotifications(channelName string) {
 			continue
 		}
 
+		s.Lock()
 		chs, ok := s.groups[psm.GroupID]
 		if !ok {
 			continue
@@ -358,5 +384,7 @@ func (s *customMatchServer) handleNotifications(channelName string) {
 		for _, v := range chs {
 			v <- psm
 		}
+		s.Unlock()
+
 	}
 }
