@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/4726/game v0.0.0-20200217233139-dfd059c9a26a
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang/protobuf v1.3.3
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0

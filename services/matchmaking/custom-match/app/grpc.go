@@ -11,8 +11,8 @@ import (
 
 	"github.com/4726/game/services/matchmaking/custom-match/config"
 	"github.com/4726/game/services/matchmaking/custom-match/pb"
+	"github.com/cenkalti/backoff"
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/lib/pq"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -45,10 +45,31 @@ var (
 )
 
 func newCustomMatchServer(cfg config.Config) (*customMatchServer, error) {
-	db, err := gorm.Open("postgres", "user=postgres password=postgres")
-	if err != nil {
-		return nil, err
+	dbParams := fmt.Sprintf("user=%v password=%v dbname=%v host=%v port=%v",
+		cfg.DB.User,
+		cfg.DB.Password,
+		cfg.DB.Name,
+		cfg.DB.Host,
+		cfg.DB.Port,
+	)
+
+	var db *gorm.DB
+
+	op := func() error {
+		logEntry.Infof("connecting to postgres: %v:%v", cfg.DB.Host, cfg.DB.Port)
+		var err error
+		db, err = gorm.Open("postgres", dbParams)
+		if err != nil {
+			logEntry.Warn("could not connect to postgres, retrying")
+		}
+		return err
 	}
+
+	if err := backoff.Retry(op, backoff.NewExponentialBackOff()); err != nil {
+		logEntry.Error("could not connect to postgres, max retries reached")
+		return nil, fmt.Errorf("could not connect to redis: %v", err)
+	}
+	logEntry.Infof("connected to postgres: %v:%v", cfg.DB.Host, cfg.DB.Port)
 
 	if err := db.AutoMigrate(&Group{}, &User{}).Error; err != nil {
 		return nil, err

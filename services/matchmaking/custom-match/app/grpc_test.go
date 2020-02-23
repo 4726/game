@@ -20,14 +20,17 @@ type test struct {
 	c       pb.CustomMatchClient
 	service *Service
 	doneChs []chan struct{}
+	sync.Mutex
 }
 
 func newTest(t testing.TB, conf ...config.Config) *test {
 	var cfg config.Config
+
 	if len(conf) < 1 {
 		cfg = config.Config{
 			Port:    14000,
 			Metrics: config.MetricsConfig{14001, "/metrics"},
+			DB:      config.DBConfig{"postgres", "postgres", "postgres", "localhost", 5432},
 		}
 	} else {
 		cfg = conf[0]
@@ -47,10 +50,12 @@ func newTest(t testing.TB, conf ...config.Config) *test {
 	service.s.db.Exec("TRUNCATE users, groups")
 	service.s.db.Exec("ALTER SEQUENCE groups_id_seq RESTART WITH 1")
 
-	return &test{c, service, []chan struct{}{}}
+	return &test{c, service, []chan struct{}{}, sync.Mutex{}}
 }
 
 func (te *test) teardown() {
+	te.Lock()
+	defer te.Unlock()
 	for _, v := range te.doneChs {
 		v <- struct{}{}
 	}
@@ -97,6 +102,8 @@ func (te *test) fillData(t testing.TB) []Group {
 }
 
 func (te *test) queryGroups(t testing.TB) []Group {
+	te.Lock()
+	defer te.Unlock()
 	var groups []Group
 	err := te.service.s.db.Preload("Users").Find(&groups).Error
 	assert.NoError(t, err)
@@ -104,6 +111,7 @@ func (te *test) queryGroups(t testing.TB) []Group {
 }
 
 func (te *test) add(t testing.TB, in *pb.AddCustomMatchRequest) ([]*pb.AddCustomMatchResponse, error) {
+	te.Lock()
 	var resps []*pb.AddCustomMatchResponse
 	outStream, err := te.c.Add(context.Background(), in)
 	assert.NoError(t, err)
@@ -118,6 +126,7 @@ func (te *test) add(t testing.TB, in *pb.AddCustomMatchRequest) ([]*pb.AddCustom
 
 	done := make(chan struct{}, 1)
 	te.doneChs = append(te.doneChs, done)
+	te.Unlock()
 
 	for {
 		select {
@@ -135,6 +144,8 @@ func (te *test) add(t testing.TB, in *pb.AddCustomMatchRequest) ([]*pb.AddCustom
 }
 
 func (te *test) join(t testing.TB, userID uint64, groupID int64, pass string) ([]*pb.JoinCustomMatchResponse, error) {
+	te.Lock()
+
 	var resps []*pb.JoinCustomMatchResponse
 	joinIn := &pb.JoinCustomMatchRequest{
 		UserId:        userID,
@@ -154,6 +165,7 @@ func (te *test) join(t testing.TB, userID uint64, groupID int64, pass string) ([
 
 	done := make(chan struct{}, 1)
 	te.doneChs = append(te.doneChs, done)
+	te.Unlock()
 
 	for {
 		select {
@@ -579,22 +591,6 @@ func TestServiceJoin(t *testing.T) {
 	assert.Equal(t, groups, groupsAfter)
 }
 
-func TestServiceLeaveGroupDoesNotExist(t *testing.T) {
-	te := newTest(t)
-	defer te.teardown()
-
-	groups := te.fillData(t)
-
-	in := &pb.LeaveCustomMatchRequest{
-		UserId:  100,
-		GroupId: 20,
-	}
-	_, err := te.c.Leave(context.Background(), in)
-	assert.Equal(t, status.Error(codes.FailedPrecondition, ErrUserNotInGroup.Error()), err)
-	groupsAfter := te.queryGroups(t)
-	assert.Equal(t, groups, groupsAfter)
-}
-
 func TestServiceLeaveNotInGroup(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
@@ -602,8 +598,7 @@ func TestServiceLeaveNotInGroup(t *testing.T) {
 	groups := te.fillData(t)
 
 	in := &pb.LeaveCustomMatchRequest{
-		UserId:  100,
-		GroupId: groups[0].ID,
+		UserId: 100,
 	}
 	_, err := te.c.Leave(context.Background(), in)
 	assert.Equal(t, status.Error(codes.FailedPrecondition, ErrUserNotInGroup.Error()), err)
@@ -621,8 +616,7 @@ func TestServiceLeave(t *testing.T) {
 	assert.NoError(t, err)
 
 	in := &pb.LeaveCustomMatchRequest{
-		UserId:  100,
-		GroupId: groups[0].ID,
+		UserId: 100,
 	}
 	_, err = te.c.Leave(context.Background(), in)
 	assert.NoError(t, err)
