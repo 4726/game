@@ -32,7 +32,7 @@ const defaultPort = 14000
 func LoadConfig(filePath string) (Config, error) {
 	var cfg Config
 	err := config.LoadConfig(&cfg, config.ConfigOpts{
-		EnvPrefix: "constants",
+		EnvPrefix: "poll",
 		Defaults: map[string]interface{}{
 			"Port":          defaultPort,
 			"Metrics.Port":  14001,
