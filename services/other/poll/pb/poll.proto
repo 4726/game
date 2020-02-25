@@ -1,0 +1,42 @@
+syntax = "proto3";
+package pb;
+
+service Poll {
+    rpc Add(AddPollRequest) returns (AddPollResponse);
+    rpc Get(GetPollRequest) returns (GetPollResponse);
+    rpc Vote(VotePollRequest) returns (VotePollResponse);
+}
+
+message AddPollRequest {
+    uint64 creator = 1;
+    repeated string choices = 2;
+    uint64 expire_minutes = 3;
+}
+
+message AddPollResponse {
+    string id = 1;
+}
+
+message GetPollRequest {
+    string poll_id = 1;
+}
+
+message GetPollResponse {
+    string poll_id = 1;
+    repeated PollChoice results = 2;
+    uint64 expire_minutes = 3;
+}
+
+message PollChoice {
+    string choice = 1;
+    uint32 percentage = 2;
+    repeated uint64 users = 3;
+}
+
+message VotePollRequest {
+    uint64 user_id = 1;
+    string poll_id = 2;
+    string choice = 3;
+}
+
+message VotePollResponse {}
