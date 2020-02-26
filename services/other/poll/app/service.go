@@ -15,7 +15,7 @@ import (
 
 type Service struct {
 	cfg           config.Config
-	s            *pollServer
+	s             *pollServer
 	grpcServer    *grpc.Server
 	metricsServer *metrics.HTTP
 }
