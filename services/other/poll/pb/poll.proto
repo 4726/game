@@ -10,7 +10,7 @@ service Poll {
 message AddPollRequest {
     uint64 creator = 1;
     repeated string choices = 2;
-    uint64 expire_minutes = 3;
+    int64 expire_minutes = 3;
 }
 
 message AddPollResponse {
@@ -24,7 +24,8 @@ message GetPollRequest {
 message GetPollResponse {
     string poll_id = 1;
     repeated PollChoice results = 2;
-    uint64 expire_minutes = 3;
+    int64 expire_minutes = 3;
+    bool has_expiration = 4;
 }
 
 message PollChoice {

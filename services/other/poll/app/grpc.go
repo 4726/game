@@ -17,11 +17,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var maxPollChoices = 10
 var errServer = errors.New("server error")
 var errDoesNotExist = errors.New("does not exist")
 var errAlreadyVoted = errors.New("already voted")
 var errPollExpired = errors.New("poll expired")
+var errMaxChoicesExceeded = errors.New("max choices exceeded")
+var errMaxExpireExceeded = errors.New("max expire minutes exceeded")
+var errPollDoesNotExist = errors.New("poll does not exist")
+var errPollChoiceDoesNotExist = errors.New("poll choice does not exist")
 
 type pollServer struct {
 	db  *redis.Client
@@ -57,18 +60,32 @@ func (s *pollServer) Add(ctx context.Context, in *pb.AddPollRequest) (*pb.AddPol
 		return nil, status.Error(codes.Canceled, "client cancelled")
 	}
 
-	expireTime := time.Now().Add(time.Minute * time.Duration(in.GetExpireMinutes())).Unix()
+	if len(in.GetChoices()) > int(s.cfg.MaxPollChoices) {
+		return nil, status.Error(codes.FailedPrecondition, errMaxChoicesExceeded.Error())
+	}
+
+	kvs := map[string]interface{}{}
+
+	if in.GetExpireMinutes() > 0 {
+		if in.GetExpireMinutes() > int64(s.cfg.MaxExpireMinutes) {
+			return nil, status.Error(codes.FailedPrecondition, errMaxExpireExceeded.Error())
+		}
+		expireTime := time.Now().Add(time.Minute * time.Duration(in.GetExpireMinutes())).Unix()
+		kvs["expire"] = strconv.FormatInt(expireTime, 10)
+	}
+
 	jsonChoices, err := json.Marshal(in.GetChoices())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	kvs["choices"] = string(jsonChoices)
 
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err := s.db.HSet(id.String(), "choices", string(jsonChoices), "expire", strconv.FormatInt(expireTime, 10)).Err(); err != nil {
+	if err := s.db.HSet(id.String(), kvs).Err(); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -96,7 +113,7 @@ func (s *pollServer) Get(ctx context.Context, in *pb.GetPollRequest) (*pb.GetPol
 		return nil, status.Error(codes.Internal, errServer.Error())
 	}
 
-	if len(choices) > maxPollChoices {
+	if len(choices) > int(s.cfg.MaxPollChoices) {
 		return nil, status.Error(codes.Internal, errServer.Error())
 	}
 
@@ -143,6 +160,7 @@ func (s *pollServer) Get(ctx context.Context, in *pb.GetPollRequest) (*pb.GetPol
 	}
 
 	var expireMinutes int64
+	var hasExpiration bool
 	expire, ok := res["expire"]
 	if ok {
 		expireTime, err := strconv.ParseInt(expire, 10, 64)
@@ -151,16 +169,44 @@ func (s *pollServer) Get(ctx context.Context, in *pb.GetPollRequest) (*pb.GetPol
 		}
 		dur := time.Until(time.Unix(expireTime, 0))
 		expireMinutes = int64(dur.Minutes())
+		hasExpiration = true
 	}
 
 	return &pb.GetPollResponse{
 		PollId:        in.GetPollId(),
 		Results:       pollResults,
-		ExpireMinutes: uint64(expireMinutes),
+		ExpireMinutes: expireMinutes,
+		HasExpiration: hasExpiration,
 	}, nil
 }
 
+//contains possible sync issues but should be fine
 func (s *pollServer) Vote(ctx context.Context, in *pb.VotePollRequest) (*pb.VotePollResponse, error) {
+	redisChoices, err := s.db.HGet(in.GetPollId(), "choices").Result()
+	if err != nil {
+		if err == redis.Nil {
+			return nil, status.Error(codes.FailedPrecondition, errPollDoesNotExist.Error())
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	var choices []string
+	if err := json.Unmarshal([]byte(redisChoices), &choices); err != nil {
+		return nil, status.Error(codes.Internal, errServer.Error())
+	}
+
+	var choiceExists bool
+	for _, v := range choices {
+		if v == in.GetChoice() {
+			choiceExists = true
+			break
+		}
+	}
+
+	if !choiceExists {
+		return nil, status.Error(codes.FailedPrecondition, errPollChoiceDoesNotExist.Error())
+	}
+
 	expireRes, err := s.db.HGet(in.GetPollId(), "expire").Result()
 	if err != nil {
 		if err == redis.Nil {
@@ -184,8 +230,6 @@ func (s *pollServer) Vote(ctx context.Context, in *pb.VotePollRequest) (*pb.Vote
 	if time.Now().After(time.Unix(expireTime, 0)) {
 		return nil, status.Error(codes.FailedPrecondition, errPollExpired.Error())
 	}
-
-	//sync issues here should be fine
 
 	res, err := s.db.HSetNX(in.GetPollId(), strconv.FormatUint(in.GetUserId(), 10), in.GetChoice()).Result()
 	if err != nil {

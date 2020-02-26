@@ -20,9 +20,11 @@ type test struct {
 
 func newTest(t testing.TB) *test {
 	cfg := config.Config{
-		Redis:   config.RedisConfig{"localhost:6379", "", 0},
-		Port:    14000,
-		Metrics: config.MetricsConfig{14001, "/metrics"},
+		Redis:            config.RedisConfig{"localhost:6379", "", 0},
+		Port:             14000,
+		Metrics:          config.MetricsConfig{14001, "/metrics"},
+		MaxPollChoices:   10,
+		MaxExpireMinutes: 144000,
 	}
 	service, err := NewService(cfg)
 	assert.NoError(t, err)
@@ -51,6 +53,60 @@ func (te *test) vote(t testing.TB, userID uint64, pollID, choice string) {
 
 func (te *test) teardown() {
 	te.service.Close()
+}
+
+func TestServiceAddMaxChoices(t *testing.T) {
+	te := newTest(t)
+	defer te.teardown()
+
+	in := &pb.AddPollRequest{
+		Creator:       1,
+		Choices:       []string{"yes", "no", "maybe", "hi", "bye", "ok", "what", "why", "when", "one", "two"},
+		ExpireMinutes: 60,
+	}
+	_, err := te.c.Add(context.Background(), in)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errMaxChoicesExceeded.Error()), err)
+}
+
+func TestServiceAddMaxExpire(t *testing.T) {
+	te := newTest(t)
+	defer te.teardown()
+
+	in := &pb.AddPollRequest{
+		Creator:       1,
+		Choices:       []string{"yes", "no", "maybe"},
+		ExpireMinutes: 144001,
+	}
+	_, err := te.c.Add(context.Background(), in)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errMaxExpireExceeded.Error()), err)
+}
+
+func TestServiceAddNoExpiration(t *testing.T) {
+	te := newTest(t)
+	defer te.teardown()
+
+	in := &pb.AddPollRequest{
+		Creator:       1,
+		Choices:       []string{"yes", "no", "maybe"},
+		ExpireMinutes: 0,
+	}
+	res, err := te.c.Add(context.Background(), in)
+	assert.NoError(t, err)
+	assert.NotEqual(t, "", res.GetId())
+}
+
+func TestServiceAddNegativeExpiration(t *testing.T) {
+	te := newTest(t)
+	defer te.teardown()
+
+	in := &pb.AddPollRequest{
+		Creator:       1,
+		Choices:       []string{"yes", "no", "maybe"},
+		ExpireMinutes: -1,
+	}
+	res, err := te.c.Add(context.Background(), in)
+	assert.NoError(t, err)
+	assert.NotEqual(t, "", res.GetId())
 }
 
 func TestServiceAdd(t *testing.T) {
@@ -108,7 +164,8 @@ func TestServiceGetNoVotes(t *testing.T) {
 		Percentage: 0,
 	}
 	assertPollChoices(t, []*pb.PollChoice{c1, c2, c3}, resp.GetResults())
-	assert.Contains(t, []uint64{60, 59, 58}, resp.GetExpireMinutes())
+	assert.Contains(t, []int64{60, 59, 58}, resp.GetExpireMinutes())
+	assert.Equal(t, true, resp.GetHasExpiration())
 }
 
 func TestServiceGetOneVote(t *testing.T) {
@@ -147,7 +204,8 @@ func TestServiceGetOneVote(t *testing.T) {
 	}
 	assert.Equal(t, pollID, resp.GetPollId())
 	assertPollChoices(t, []*pb.PollChoice{c1, c2, c3}, resp.GetResults())
-	assert.Contains(t, []uint64{60, 59, 58}, resp.GetExpireMinutes())
+	assert.Contains(t, []int64{60, 59, 58}, resp.GetExpireMinutes())
+	assert.Equal(t, true, resp.GetHasExpiration())
 }
 
 func TestServiceGetEqualVotes(t *testing.T) {
@@ -191,7 +249,94 @@ func TestServiceGetEqualVotes(t *testing.T) {
 	}
 	assert.Equal(t, pollID, resp.GetPollId())
 	assertPollChoices(t, []*pb.PollChoice{c1, c2, c3}, resp.GetResults())
-	assert.Contains(t, []uint64{60, 59, 58}, resp.GetExpireMinutes())
+	assert.Contains(t, []int64{60, 59, 58}, resp.GetExpireMinutes())
+	assert.Equal(t, true, resp.GetHasExpiration())
+}
+
+func TestServiceGetNoExpiration(t *testing.T) {
+	te := newTest(t)
+	defer te.teardown()
+
+	addIn := &pb.AddPollRequest{
+		Creator:       1,
+		Choices:       []string{"yes", "no", "maybe"},
+		ExpireMinutes: 0,
+	}
+	addRes, err := te.c.Add(context.Background(), addIn)
+	pollID := addRes.GetId()
+
+	te.vote(t, 2, pollID, "yes")
+	te.vote(t, 3, pollID, "no")
+	te.vote(t, 4, pollID, "maybe")
+	te.vote(t, 5, pollID, "yes")
+	te.vote(t, 6, pollID, "yes")
+
+	in := &pb.GetPollRequest{
+		PollId: pollID,
+	}
+	resp, err := te.c.Get(context.Background(), in)
+	assert.NoError(t, err)
+	c1 := &pb.PollChoice{
+		Choice:     "yes",
+		Percentage: 60,
+		Users:      []uint64{2, 5, 6},
+	}
+	c2 := &pb.PollChoice{
+		Choice:     "no",
+		Percentage: 20,
+		Users:      []uint64{3},
+	}
+	c3 := &pb.PollChoice{
+		Choice:     "maybe",
+		Percentage: 20,
+		Users:      []uint64{4},
+	}
+	assert.Equal(t, pollID, resp.GetPollId())
+	assertPollChoices(t, []*pb.PollChoice{c1, c2, c3}, resp.GetResults())
+	assert.Equal(t, false, resp.GetHasExpiration())
+}
+
+func TestServiceGetNegativeExpiration(t *testing.T) {
+	te := newTest(t)
+	defer te.teardown()
+
+	addIn := &pb.AddPollRequest{
+		Creator:       1,
+		Choices:       []string{"yes", "no", "maybe"},
+		ExpireMinutes: -1,
+	}
+	addRes, err := te.c.Add(context.Background(), addIn)
+	pollID := addRes.GetId()
+
+	te.vote(t, 2, pollID, "yes")
+	te.vote(t, 3, pollID, "no")
+	te.vote(t, 4, pollID, "maybe")
+	te.vote(t, 5, pollID, "yes")
+	te.vote(t, 6, pollID, "yes")
+
+	in := &pb.GetPollRequest{
+		PollId: pollID,
+	}
+	resp, err := te.c.Get(context.Background(), in)
+	assert.NoError(t, err)
+	c1 := &pb.PollChoice{
+		Choice:     "yes",
+		Percentage: 60,
+		Users:      []uint64{2, 5, 6},
+	}
+	c2 := &pb.PollChoice{
+		Choice:     "no",
+		Percentage: 20,
+		Users:      []uint64{3},
+	}
+	c3 := &pb.PollChoice{
+		Choice:     "maybe",
+		Percentage: 20,
+		Users:      []uint64{4},
+	}
+	assert.Equal(t, pollID, resp.GetPollId())
+	assertPollChoices(t, []*pb.PollChoice{c1, c2, c3}, resp.GetResults())
+	assert.Equal(t, false, resp.GetHasExpiration())
 }
 
 func TestServiceGet(t *testing.T) {
@@ -234,7 +379,8 @@ func TestServiceGet(t *testing.T) {
 	}
 	assert.Equal(t, pollID, resp.GetPollId())
 	assertPollChoices(t, []*pb.PollChoice{c1, c2, c3}, resp.GetResults())
-	assert.Contains(t, []uint64{60, 59, 58}, resp.GetExpireMinutes())
+	assert.Contains(t, []int64{60, 59, 58}, resp.GetExpireMinutes())
+	assert.Equal(t, true, resp.GetHasExpiration())
 }
 
 func TestServiceVotePollDoesNotExist(t *testing.T) {
@@ -247,7 +393,7 @@ func TestServiceVotePollDoesNotExist(t *testing.T) {
 		Choice: "yes",
 	}
 	_, err := te.c.Vote(context.Background(), in)
-	assert.NoError(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errPollDoesNotExist.Error()), err)
 }
 
 func TestServiceVoteExpired(t *testing.T) {
@@ -290,7 +436,7 @@ func TestServiceVoteChoiceDoesNotExist(t *testing.T) {
 		Choice: "other",
 	}
 	_, err = te.c.Vote(context.Background(), in)
-	assert.NoError(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errPollChoiceDoesNotExist.Error()), err)
 }
 
 func TestServiceVoteAlreadyVotedSame(t *testing.T) {
@@ -358,6 +504,31 @@ func TestServiceVote(t *testing.T) {
 	}
 	_, err = te.c.Vote(context.Background(), in)
 	assert.NoError(t, err)
+}
+
+func TestServiceTLSInvalidPath(t *testing.T) {
+	cfg := config.Config{
+		Redis:   config.RedisConfig{"localhost:6379", "", 0},
+		Port:    14000,
+		Metrics: config.MetricsConfig{14001, "/metrics"},
+		TLS:     config.TLSConfig{"crt.pem", "key.pem"},
+	}
+
+	_, err := NewService(cfg)
+	assert.Error(t, err)
+}
+
+func TestServiceTLS(t *testing.T) {
+	cfg := config.Config{
+		Redis:   config.RedisConfig{"localhost:6379", "", 0},
+		Port:    14000,
+		Metrics: config.MetricsConfig{14001, "/metrics"},
+		TLS:     config.TLSConfig{"../../../../tests/tls/localhost.crt", "../../../../tests/tls/localhost.key"},
+	}
+
+	service, err := NewService(cfg)
+	assert.NoError(t, err)
+	defer service.Close()
 }
 
 func assertPollChoices(t testing.TB, expected, actual []*pb.PollChoice) {
