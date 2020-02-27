@@ -19,7 +19,7 @@ type MetricsConfig struct {
 type DBConfig struct {
 	Name, Collection string
 	Addr             string
-	DialTimeout      uint //seconds
+	DialTimeout      int //seconds
 }
 
 type TLSConfig struct {

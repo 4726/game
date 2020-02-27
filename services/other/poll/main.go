@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/4726/game/services/matchmaking/live/app"
-	"github.com/4726/game/services/matchmaking/live/config"
+	"github.com/4726/game/services/other/poll/app"
+	"github.com/4726/game/services/other/poll/config"
 )
 
 var configPath string
@@ -23,8 +23,8 @@ Commands:
 `
 
 func main() {
-	flag.StringVar(&configPath, "config", "", "Path to config file")
-	flag.StringVar(&configPath, "c", "", "Path to config file")
+	flag.StringVar(&configPath, "config", "", "path to config file")
+	flag.StringVar(&configPath, "c", "", "path to config file")
 	flag.Usage = func() {
 		fmt.Printf("%s\n", usage)
 		os.Exit(0)

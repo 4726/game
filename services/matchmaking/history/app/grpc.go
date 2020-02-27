@@ -44,6 +44,7 @@ func newHistoryServer(c config.Config) (*historyServer, error) {
 		return nil, fmt.Errorf("could not create nsq consumer: %v", err)
 	}
 	consumer.AddHandler(&nsqMessageHandler{db, c.DB.Name, c.DB.Collection})
+	consumer.SetLogger(logEntry, nsq.LogLevelDebug)
 
 	op := func() error {
 		logEntry.Info("connecting to nsq: ", c.NSQ.Addr)
@@ -58,6 +59,7 @@ func newHistoryServer(c config.Config) (*historyServer, error) {
 		logEntry.Error("could not connect to nsq, max retries reached")
 		return nil, fmt.Errorf("could not connect to nsqd: %v", err)
 	}
+	logEntry.Info("successfully connected to nsq: ", c.NSQ.Addr)
 
 	return &historyServer{consumer, db, c}, nil
 }

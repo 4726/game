@@ -1,0 +1,13 @@
+port: 14000
+metrics:
+  port: 14001
+  route: "/metrics"
+redis: 
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+  setname: "rankings"
+nsq:
+  addr: "127.0.0.1:4150"
+  topic: "rankings"
+  channel: "app"

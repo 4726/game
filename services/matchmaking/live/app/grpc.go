@@ -25,7 +25,7 @@ func newLiveServer(cfg config.Config) (*liveServer, error) {
 	defer cancel()
 	db, err := mongo.Connect(ctx, opts)
 	if err != nil {
-		return nil, fmt.Errorf("could not connect to mongo: " + err.Error())
+		return nil, fmt.Errorf("could not connect to mongo: ", err.Error())
 	}
 	logEntry.Info("connection to mongodb: ", cfg.DB.Addr)
 	pingCtx, pingCancel := context.WithTimeout(context.Background(), time.Second*time.Duration(cfg.DB.DialTimeout))

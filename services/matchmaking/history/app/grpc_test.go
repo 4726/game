@@ -242,7 +242,7 @@ func TestServiceTLSInvalidPath(t *testing.T) {
 		MaxMatchResponses: 100,
 		Port:              14000,
 		Metrics:           config.MetricsConfig{14001, "/metrics"},
-		TLS:     config.TLSConfig{"crt.pem", "key.pem"},
+		TLS:               config.TLSConfig{"crt.pem", "key.pem"},
 	}
 
 	_, err := NewService(cfg)
@@ -256,9 +256,9 @@ func TestServiceTLS(t *testing.T) {
 		MaxMatchResponses: 100,
 		Port:              14000,
 		Metrics:           config.MetricsConfig{14001, "/metrics"},
-		TLS:     config.TLSConfig{"../../../../tests/tls/localhost.crt", "../../../../tests/tls/localhost.key"},
+		TLS:               config.TLSConfig{"../../../../tests/tls/localhost.crt", "../../../../tests/tls/localhost.key"},
 	}
-	
+
 	service, err := NewService(cfg)
 	assert.NoError(t, err)
 	defer service.Close()

@@ -255,5 +255,5 @@ func TestServiceTLS(t *testing.T) {
 
 	service, err := NewService(cfg)
 	assert.NoError(t, err)
-	defer service.Close()
+	service.Close()
 }

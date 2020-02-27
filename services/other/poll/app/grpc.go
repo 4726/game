@@ -52,6 +52,8 @@ func newPollServer(c config.Config) (*pollServer, error) {
 		return nil, fmt.Errorf("could not connect to redis: %v", err)
 	}
 
+	logEntry.Info("successfully connected to redis: ", c.Redis.Addr)
+
 	return &pollServer{db, c}, nil
 }
 

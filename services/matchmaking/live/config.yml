@@ -1,0 +1,9 @@
+port: 14000
+metrics:
+  port: 14001
+  route: "/metrics"
+db: 
+  addr: "mongodb://localhost:27017"
+  dialtimeout: 60
+  name: "matchmaking"
+  collection: "live"

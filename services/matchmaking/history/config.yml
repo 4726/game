@@ -3,6 +3,10 @@ db:
   collection: collection
 nsq:
   addr: 127.0.0.1:4150
-  topic: matches
-  channel: db
-max_match_responses: 100
+  topic: history
+  channel: app
+metrics:
+  port: 14001
+  route: "/metrics"
+maxmatchresponses: 100
+port: 14000

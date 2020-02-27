@@ -220,3 +220,28 @@ func TestServiceGet(t *testing.T) {
 	}
 	assert.Equal(t, []*pb.ChatMessage{expectedMsg1, expectedMsg2, expectedMsg3}, resp.GetMessages())
 }
+
+func TestServiceTLSInvalidPath(t *testing.T) {
+	cfg := config.Config{
+		Cassandra: config.CassandraConfig{"127.0.0.1", 9042, 10},
+		Port:      14000,
+		Metrics:   config.MetricsConfig{14001, "/metrics"},
+		TLS:       config.TLSConfig{"crt.pem", "key.pem"},
+	}
+
+	_, err := NewService(cfg)
+	assert.Error(t, err)
+}
+
+func TestServiceTLS(t *testing.T) {
+	cfg := config.Config{
+		Cassandra: config.CassandraConfig{"127.0.0.1", 9042, 10},
+		Port:      14000,
+		Metrics:   config.MetricsConfig{14001, "/metrics"},
+		TLS:                  config.TLSConfig{"../../../../tests/tls/localhost.crt", "../../../../tests/tls/localhost.key"},
+	}
+
+	service, err := NewService(cfg)
+	assert.NoError(t, err)
+	service.Close()
+}

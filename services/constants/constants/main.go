@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/4726/game/services/matchmaking/live/app"
-	"github.com/4726/game/services/matchmaking/live/config"
+	"github.com/4726/game/services/constants/constants/app"
+	"github.com/4726/game/services/constants/constants/config"
 )
 
 var configPath string

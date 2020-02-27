@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/4726/game/services/matchmaking/ranking/config"
 	"github.com/4726/game/services/matchmaking/ranking/pb"
@@ -24,9 +23,9 @@ type rankingServer struct {
 
 func newRankingServer(c config.Config) (*rankingServer, error) {
 	db := redis.NewClient(&redis.Options{
-		Addr:        c.Redis.Addr,
-		Password:    c.Redis.Password,
-		DB:          c.Redis.DB,
+		Addr:     c.Redis.Addr,
+		Password: c.Redis.Password,
+		DB:       c.Redis.DB,
 	})
 
 	redisOp := func() error {
@@ -43,11 +42,14 @@ func newRankingServer(c config.Config) (*rankingServer, error) {
 		return nil, fmt.Errorf("could not connect to redis: %v", err)
 	}
 
+	logEntry.Info("successfully connected to redis: ", c.Redis.Addr)
+
 	consumer, err := nsq.NewConsumer(c.NSQ.Topic, c.NSQ.Channel, nsq.NewConfig())
 	if err != nil {
 		return nil, fmt.Errorf("could not create nsq consumer: %v", err)
 	}
 	consumer.AddHandler(&nsqMessageHandler{db, c.Redis.SetName})
+	consumer.SetLogger(logEntry, nsq.LogLevelDebug)
 
 	op := func() error {
 		logEntry.Info("connecting to nsq: ", c.NSQ.Addr)
@@ -62,6 +64,8 @@ func newRankingServer(c config.Config) (*rankingServer, error) {
 		logEntry.Error("could not connect to nsq, max retries reached")
 		return nil, fmt.Errorf("could not connect to nsqd: %v", err)
 	}
+
+	logEntry.Info("successfully connected to nsq: ", c.NSQ.Addr)
 
 	return &rankingServer{consumer, db, c}, nil
 }

@@ -39,6 +39,8 @@ func newConstantsServer(c config.Config) (*constantsServer, error) {
 		return nil, fmt.Errorf("could not connect to redis: %v", err)
 	}
 
+	logEntry.Info("successfully connected to redis: ", c.Redis.Addr)
+
 	return &constantsServer{db, c}, nil
 }
 

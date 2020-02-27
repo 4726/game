@@ -42,10 +42,13 @@ func newChatServer(c config.Config) (*chatServer, error) {
 	cluster.ConnectTimeout = time.Second * time.Duration(c.Cassandra.DialTimeout)
 	cluster.Port = c.Cassandra.Port
 	cluster.Timeout = time.Second * 5
+	logEntry.Infof("connecting to cassandra: %v:%v", c.Cassandra.Host, c.Cassandra.Port)
 	session, err := cluster.CreateSession()
 	if err != nil {
 		return nil, err
 	}
+
+	logEntry.Infof("connected to cassandra: %v:%v", c.Cassandra.Host, c.Cassandra.Port)
 
 	return &chatServer{session, c}, nil
 }

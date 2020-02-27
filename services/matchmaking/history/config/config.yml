@@ -1,8 +1,0 @@
-db:
-  name: dbname
-  collection: collectionname
-nsq:
-  addr: 127.0.0.1:4150
-  topic: topic
-  channel: channel
-max_match_responses: 100
