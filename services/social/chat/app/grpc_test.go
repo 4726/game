@@ -8,8 +8,11 @@ import (
 
 	"github.com/4726/game/services/social/chat/config"
 	"github.com/4726/game/services/social/chat/pb"
+	"github.com/gocql/gocql"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/nsqio/go-nsq"
+	"github.com/scylladb/gocqlx"
+	"github.com/scylladb/gocqlx/qb"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -55,6 +58,23 @@ func (te *test) teardown() {
 	te.service.Close()
 }
 
+func (te *test) queryAll(t testing.TB) []Message {
+	var msgs []Message
+	stmt, names := qb.Select("messages").ToCql()
+	q := gocqlx.Query(te.service.cs.db.Query(stmt), names)
+	assert.NoError(t, q.SelectRelease(&msgs))
+	return msgs
+}
+
+func (te *test) messagesEqual(t testing.TB, expected, actual []Message) {
+	for i, v := range actual {
+		assert.NotEqual(t, "", v.MessagesTime.String())
+		v.MessagesTime = gocql.UUID{}
+		actual[i] = v
+	}
+	assert.ElementsMatch(t, expected, actual)
+}
+
 func TestServiceSend(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
@@ -92,6 +112,17 @@ Loop:
 	assert.Equal(t, in.GetTo(), msgs[0].MessagesUser2)
 	assert.NotEqual(t, "", msgs[0].MessagesTime.String())
 	assert.Len(t, msgs, 1)
+
+	queriedMsgs := te.queryAll(t)
+	expectedMsgs := []Message{
+		Message{
+			MessagesFrom:    in.GetFrom(),
+			MessagesMessage: in.GetMessage(),
+			MessagesUser1:   in.GetFrom(),
+			MessagesUser2:   in.GetTo(),
+		},
+	}
+	te.messagesEqual(t, expectedMsgs, queriedMsgs)
 }
 
 func TestServiceGetNone(t *testing.T) {
@@ -106,6 +137,10 @@ func TestServiceGetNone(t *testing.T) {
 	resp, err := te.c.Get(context.Background(), in)
 	assert.NoError(t, err)
 	assert.Len(t, resp.GetMessages(), 0)
+
+	queriedMsgs := te.queryAll(t)
+	expectedMsgs := []Message{}
+	te.messagesEqual(t, expectedMsgs, queriedMsgs)
 }
 
 func TestServiceGetTotal(t *testing.T) {
@@ -148,6 +183,35 @@ func TestServiceGetTotal(t *testing.T) {
 		respMsgs = append(respMsgs, v)
 	}
 	assert.Equal(t, []*pb.ChatMessage{expectedMsg1, expectedMsg2}, resp.GetMessages())
+
+	queriedMsgs := te.queryAll(t)
+	expectedMsgs := []Message{
+		Message{
+			MessagesFrom:    1,
+			MessagesMessage: "hello",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+		Message{
+			MessagesFrom:    1,
+			MessagesMessage: "bye bye",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+		Message{
+			MessagesFrom:    2,
+			MessagesMessage: "hi",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+		Message{
+			MessagesFrom:    2,
+			MessagesMessage: "bye",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+	}
+	te.messagesEqual(t, expectedMsgs, queriedMsgs)
 }
 
 func TestServiceGetUsersReversed(t *testing.T) {
@@ -196,6 +260,29 @@ func TestServiceGetUsersReversed(t *testing.T) {
 		respMsgs = append(respMsgs, v)
 	}
 	assert.Equal(t, []*pb.ChatMessage{expectedMsg1, expectedMsg2, expectedMsg3}, resp.GetMessages())
+
+	queriedMsgs := te.queryAll(t)
+	expectedMsgs := []Message{
+		Message{
+			MessagesFrom:    1,
+			MessagesMessage: "hello",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+		Message{
+			MessagesFrom:    1,
+			MessagesMessage: "bye bye",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+		Message{
+			MessagesFrom:    2,
+			MessagesMessage: "hi",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+	}
+	te.messagesEqual(t, expectedMsgs, queriedMsgs)
 }
 
 func TestServiceGetSkip(t *testing.T) {
@@ -238,6 +325,35 @@ func TestServiceGetSkip(t *testing.T) {
 		respMsgs = append(respMsgs, v)
 	}
 	assert.Equal(t, []*pb.ChatMessage{expectedMsg1, expectedMsg2}, resp.GetMessages())
+
+	queriedMsgs := te.queryAll(t)
+	expectedMsgs := []Message{
+		Message{
+			MessagesFrom:    1,
+			MessagesMessage: "hello",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+		Message{
+			MessagesFrom:    1,
+			MessagesMessage: "bye bye",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+		Message{
+			MessagesFrom:    2,
+			MessagesMessage: "hi",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+		Message{
+			MessagesFrom:    2,
+			MessagesMessage: "bye",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+	}
+	te.messagesEqual(t, expectedMsgs, queriedMsgs)
 }
 
 func TestServiceGet(t *testing.T) {
@@ -286,6 +402,29 @@ func TestServiceGet(t *testing.T) {
 		respMsgs = append(respMsgs, v)
 	}
 	assert.Equal(t, []*pb.ChatMessage{expectedMsg1, expectedMsg2, expectedMsg3}, resp.GetMessages())
+
+	queriedMsgs := te.queryAll(t)
+	expectedMsgs := []Message{
+		Message{
+			MessagesFrom:    1,
+			MessagesMessage: "hello",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+		Message{
+			MessagesFrom:    1,
+			MessagesMessage: "bye bye",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+		Message{
+			MessagesFrom:    2,
+			MessagesMessage: "hi",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+	}
+	te.messagesEqual(t, expectedMsgs, queriedMsgs)
 }
 
 func TestServiceTLSInvalidPath(t *testing.T) {
