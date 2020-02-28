@@ -5,10 +5,16 @@ import (
 )
 
 type Config struct {
-	Cassandra   CassandraConfig
-	Port    int
-	Metrics MetricsConfig
-	TLS     TLSConfig
+	Cassandra CassandraConfig
+	Port      int
+	Metrics   MetricsConfig
+	TLS       TLSConfig
+	NSQ       NSQConfig
+}
+
+type NSQConfig struct {
+	Addr  string
+	Topic string
 }
 
 type MetricsConfig struct {
@@ -17,8 +23,8 @@ type MetricsConfig struct {
 }
 
 type CassandraConfig struct {
-	Host string
-	Port     int
+	Host        string
+	Port        int
 	DialTimeout uint
 }
 
@@ -26,7 +32,6 @@ type TLSConfig struct {
 	CertPath, KeyPath string
 }
 
-const defaultMaxMatchResponses = 100
 const defaultPort = 14000
 const defaultCassandraPort = 9042
 
@@ -35,9 +40,10 @@ func LoadConfig(filePath string) (Config, error) {
 	err := config.LoadConfig(&cfg, config.ConfigOpts{
 		EnvPrefix: "history",
 		Defaults: map[string]interface{}{
-			"Port":          defaultPort,
-			"Metrics.Port":  14001,
-			"Metrics.Route": "/metrics",
+			"Port":           defaultPort,
+			"Metrics.Port":   14001,
+			"Metrics.Route":  "/metrics",
+			"Cassandra.Port": defaultCassandraPort,
 		},
 		FilePath: filePath,
 	})

@@ -20,6 +20,7 @@ message GetChatRequest {
     uint64 user1 = 1;
     uint64 user2 = 2;
     uint64 total = 3;
+    uint64 skip = 4;
 }
 
 message GetChatResponse {

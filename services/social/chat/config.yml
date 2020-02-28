@@ -1,5 +1,4 @@
 port: 14000
-limit: 10000
 metrics:
   port: 14001
   route: "/metrics"
@@ -7,3 +6,6 @@ cassandra:
   host: "127.0.0.1"
   port: "9042"
   dialtimeout: 60
+nsq: 
+  addr: "127.0.0.1:4150"
+  topic: "notifications"

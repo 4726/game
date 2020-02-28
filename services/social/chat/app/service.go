@@ -32,12 +32,12 @@ func NewService(cfg config.Config) (*Service, error) {
 	}
 
 	if s.cfg.TLS.CertPath != "" && s.cfg.TLS.KeyPath != "" {
-		s.grpcServer, err = grpcutil.DefaultServerTLS(logEntry, s.cfg.TLS.CertPath, s.cfg.TLS.KeyPath)
+		s.grpcServer, err = grpcutil.DefaultServerTLS(logEntry.Entry, s.cfg.TLS.CertPath, s.cfg.TLS.KeyPath)
 		if err != nil {
 			return nil, fmt.Errorf("grpc error: %v", err)
 		}
 	} else {
-		s.grpcServer = grpcutil.DefaultServer(logEntry)
+		s.grpcServer = grpcutil.DefaultServer(logEntry.Entry)
 	}
 
 	pb.RegisterChatServer(s.grpcServer, s.cs)

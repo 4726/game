@@ -11,23 +11,30 @@ package app
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/4726/game/services/social/chat/config"
 	"github.com/4726/game/services/social/chat/pb"
+	"github.com/cenkalti/backoff"
 	"github.com/gocql/gocql"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/nsqio/go-nsq"
 	"github.com/scylladb/gocqlx"
 	"github.com/scylladb/gocqlx/qb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
+//chatServer implements pb.ChatServer
 type chatServer struct {
-	db  *gocql.Session
-	cfg config.Config
+	db   *gocql.Session
+	cfg  config.Config
+	prod *nsq.Producer
 }
 
+//Message is the schema for cassandra
 type Message struct {
 	MessagesFrom    uint64
 	MessagesMessage string
@@ -36,6 +43,7 @@ type Message struct {
 	MessagesTime    gocql.UUID
 }
 
+//newChatServer returns a new chatServer with a cassandra client and nsq producer initialized
 func newChatServer(c config.Config) (*chatServer, error) {
 	cluster := gocql.NewCluster(c.Cassandra.Host)
 	cluster.Keyspace = "chat"
@@ -50,9 +58,16 @@ func newChatServer(c config.Config) (*chatServer, error) {
 
 	logEntry.Infof("connected to cassandra: %v:%v", c.Cassandra.Host, c.Cassandra.Port)
 
-	return &chatServer{session, c}, nil
+	producer, err := nsq.NewProducer(c.NSQ.Addr, nsq.NewConfig())
+	if err != nil {
+		return nil, fmt.Errorf("could not create nsq producer: %v", err)
+	}
+	producer.SetLogger(logEntry, nsq.LogLevelDebug)
+
+	return &chatServer{session, c, producer}, nil
 }
 
+//Send adds the message into cassandra and then sends a message notification to nsq
 func (s *chatServer) Send(ctx context.Context, in *pb.SendChatRequest) (*pb.SendChatResponse, error) {
 	var sortedUsers []uint64
 	if in.GetFrom() < in.GetTo() {
@@ -68,12 +83,31 @@ func (s *chatServer) Send(ctx context.Context, in *pb.SendChatRequest) (*pb.Send
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	go func() {
+		buffer, err := json.Marshal(&msg)
+		if err != nil {
+			logEntry.Errorf("could not marshal message to json. id: %s", msg.MessagesTime)
+			return
+		}
+
+		op := func() error {
+			return s.prod.Publish(s.cfg.NSQ.Topic, buffer)
+		}
+
+		if err := backoff.Retry(op, backoff.NewExponentialBackOff()); err != nil {
+			logEntry.Warnf("could not produce message to nsq running on: %s. err: %s", s.cfg.NSQ.Topic, err)
+			return
+		}
+		logEntry.Infof("sent message to nsq. id: %s", msg.MessagesTime)
+	}()
+
 	return &pb.SendChatResponse{}, nil
 }
 
+//Get queries cassandra for chat data between two users
 func (s *chatServer) Get(ctx context.Context, in *pb.GetChatRequest) (*pb.GetChatResponse, error) {
 	var msgs []Message
-	stmt, names := qb.Select("messages").Where(qb.Eq("messages_user1")).Where(qb.Eq("messages_user2")).OrderBy("messages_time", qb.Order(false)).Limit(uint(in.GetTotal())).ToCql()
+	stmt, names := qb.Select("messages").Where(qb.Eq("messages_user1")).Where(qb.Eq("messages_user2")).OrderBy("messages_time", qb.Order(false)).Limit(uint(in.GetTotal() + in.GetSkip())).ToCql()
 	var usersQuery []uint64
 	if in.GetUser1() < in.GetUser2() {
 		usersQuery = []uint64{in.GetUser1(), in.GetUser2()}
@@ -87,6 +121,14 @@ func (s *chatServer) Get(ctx context.Context, in *pb.GetChatRequest) (*pb.GetCha
 	if err := q.SelectRelease(&msgs); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	if len(msgs) <= int(in.GetSkip()) {
+		return &pb.GetChatResponse{
+			Messages: []*pb.ChatMessage{},
+		}, nil
+	}
+
+	msgs = msgs[in.GetSkip():]
 
 	var pbMsgs []*pb.ChatMessage
 	for _, v := range msgs {
@@ -117,5 +159,10 @@ func (s *chatServer) Get(ctx context.Context, in *pb.GetChatRequest) (*pb.GetCha
 
 //Close gracefully stops the server
 func (s *chatServer) Close() {
-	s.db.Close()
+	if s.db != nil {
+		s.db.Close()
+	}
+	if s.prod != nil {
+		s.prod.Stop()
+	}
 }
