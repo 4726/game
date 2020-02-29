@@ -1,0 +1,55 @@
+syntax = "proto3";
+package pb;
+
+service Chat {
+    rpc Add(AddFriendRequest) returns (AddFriendResponse);
+    rpc Delete(DeleteFriendRequest) returns (DeleteFriendResponse);
+    rpc Get(GetFriendRequest) returns (GetFriendResponse);
+    rpc GetRequests(GetRequestsFriendRequest) returns (GetRequestsFriendResponse);
+    rpc Accept(AcceptFriendRequest) returns (AcceptFriendResponse);
+    rpc Deny(DenyFriendRequest) returns (DenyFriendResponse);
+}
+
+message AddFriendRequest {
+    uint64 user_id = 1;
+    uint64 friend_id = 2;
+}
+
+message AddFriendResponse {}
+
+message DeleteFriendRequest {
+    uint64 user_id = 1;
+    uint64 friend_id = 2;
+}
+
+message DeleteFriendResponse {}
+
+message GetFriendRequest {
+    uint64 user_id = 1;
+}
+
+message GetFriendResponse {
+    repeated uint64 friends = 1;
+}
+
+message GetRequestsFriendRequest {
+    uint64 user_id = 1;
+}
+
+message GetRequestsFriendResponse {
+    repeated uint64 requests = 1;
+}
+
+message AcceptFriendRequest {
+    uint64 user_id = 1;
+    uint64 friend_id = 2;
+}
+
+message AcceptFriendResponse {}
+
+message DenyFriendRequest {
+    uint64 user_id = 1;
+    uint64 friend_id = 2;
+}
+
+message DenyFriendResponse {}

@@ -356,6 +356,77 @@ func TestServiceGetSkip(t *testing.T) {
 	te.messagesEqual(t, expectedMsgs, queriedMsgs)
 }
 
+func TestServiceGetSkip2(t *testing.T) {
+	te := newTest(t)
+	defer te.teardown()
+
+	te.addData(t, 1, 2, "hello")
+	te.addData(t, 2, 1, "hi")
+	te.addData(t, 1, 2, "bye bye")
+	te.addData(t, 2, 1, "bye")
+
+	in := &pb.GetChatRequest{
+		User1: 2,
+		User2: 1,
+		Total: 2,
+		Skip:  1,
+	}
+	resp, err := te.c.Get(context.Background(), in)
+	assert.NoError(t, err)
+	expectedMsg1 := &pb.ChatMessage{
+		From:    1,
+		To:      2,
+		Message: "bye bye",
+		Time:    nil,
+	}
+	expectedMsg2 := &pb.ChatMessage{
+		From:    2,
+		To:      1,
+		Message: "hi",
+		Time:    nil,
+	}
+
+	var respMsgs []*pb.ChatMessage
+	for _, v := range resp.GetMessages() {
+		ts, err := ptypes.Timestamp(v.GetTime())
+		assert.NoError(t, err)
+		assert.WithinDuration(t, time.Now(), ts, time.Second*20)
+
+		v.Time = nil
+		respMsgs = append(respMsgs, v)
+	}
+	assert.Equal(t, []*pb.ChatMessage{expectedMsg1, expectedMsg2}, resp.GetMessages())
+
+	queriedMsgs := te.queryAll(t)
+	expectedMsgs := []Message{
+		Message{
+			MessagesFrom:    1,
+			MessagesMessage: "hello",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+		Message{
+			MessagesFrom:    1,
+			MessagesMessage: "bye bye",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+		Message{
+			MessagesFrom:    2,
+			MessagesMessage: "hi",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+		Message{
+			MessagesFrom:    2,
+			MessagesMessage: "bye",
+			MessagesUser1:   1,
+			MessagesUser2:   2,
+		},
+	}
+	te.messagesEqual(t, expectedMsgs, queriedMsgs)
+}
+
 func TestServiceGet(t *testing.T) {
 	te := newTest(t)
 	defer te.teardown()
