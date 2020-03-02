@@ -2,25 +2,20 @@ package app
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"strings"
-	"sync"
-	"time"
 
 	"github.com/4726/game/services/social/friends/config"
 	"github.com/4726/game/services/social/friends/pb"
 	"github.com/cenkalti/backoff"
 	"github.com/jinzhu/gorm"
-	"github.com/lib/pq"
+	_ "github.com/lib/pq"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type friendsServer struct {
-	db     *gorm.DB
-	cfg    config.Config
+	db  *gorm.DB
+	cfg config.Config
 }
 
 func newFriendsServer(cfg config.Config) (*friendsServer, error) {
@@ -53,29 +48,47 @@ func newFriendsServer(cfg config.Config) (*friendsServer, error) {
 	if err := db.AutoMigrate(&Request{}).Error; err != nil {
 		return nil, err
 	}
+	db.LogMode(true)
 
 	return &friendsServer{
-		db:     db,
-		cfg:    cfg,
+		db:  db,
+		cfg: cfg,
 	}, nil
 }
 
 func (s *friendsServer) Add(ctx context.Context, in *pb.AddFriendRequest) (*pb.AddFriendResponse, error) {
+	if in.GetUserId() == in.GetFriendId() {
+		return nil, status.Error(codes.FailedPrecondition, "user cannot add themselves")
+	}
+
 	request := Request{
-		From: in.GetUserId(),
-		To: in.GetFriendId(),
+		From:     in.GetUserId(),
+		To:       in.GetFriendId(),
 		Accepted: false,
 	}
-	if err := s.db.Create(&request); err != nil {
-		return nil, status.Error(codes.Internal, err)
+	res := s.db.Exec(`INSERT INTO requests ("from", "to", "accepted") 
+		SELECT ?, ?, ? FROM requests 
+		WHERE ("from" = ? AND "to" = ?) OR ("from" = ? AND "to" = ?) 
+		HAVING count(*) < 1;`,
+		request.From, request.To, false, request.From, request.To, request.To, request.From)
+	if res.Error != nil {
+		return nil, status.Error(codes.Internal, res.Error.Error())
+	}
+
+	if res.RowsAffected < 1 {
+		return nil, status.Error(codes.FailedPrecondition, "cannot send friend request")
 	}
 
 	return &pb.AddFriendResponse{}, nil
 }
 
 func (s *friendsServer) Delete(ctx context.Context, in *pb.DeleteFriendRequest) (*pb.DeleteFriendResponse, error) {
-	if err := s.db.Where("(from = ? AND to = ?) OR (from = ? AND to = ?)", in.GetUserId(), in.GetFriendId(), in.GetFriendId(), in.GetUserId()).Delete(Request{}); err != nil {
-		return nil, status.Error(codes.Internal, err)
+	res := s.db.Where(`("from" = ? AND "to" = ? AND accepted = ?) OR ("from" = ? AND "to" = ? AND accepted = ?)`, in.GetUserId(), in.GetFriendId(), true, in.GetFriendId(), in.GetUserId(), true).Delete(Request{})
+	if res.Error != nil {
+		return nil, status.Error(codes.Internal, res.Error.Error())
+	}
+	if res.RowsAffected < 1 {
+		return nil, status.Error(codes.FailedPrecondition, "friend does not exist")
 	}
 
 	return &pb.DeleteFriendResponse{}, nil
@@ -83,8 +96,8 @@ func (s *friendsServer) Delete(ctx context.Context, in *pb.DeleteFriendRequest) 
 
 func (s *friendsServer) Get(ctx context.Context, in *pb.GetFriendRequest) (*pb.GetFriendResponse, error) {
 	var requests []Request
-	if err := s.db.Model(Request{}).Where("(from = ? AND accepted = ?) OR (to = ? AND accepted = ?)", in.GetUserId(), true, in.GetUserId(), true).Find(&requests); err != nil {
-		return nil, status.Error(codes.Internal, err)
+	if err := s.db.Model(Request{}).Where(`("from" = ? AND "accepted" = ?) OR ("to" = ? AND "accepted" = ?)`, in.GetUserId(), true, in.GetUserId(), true).Find(&requests).Error; err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	var userIDs []uint64
@@ -103,31 +116,39 @@ func (s *friendsServer) Get(ctx context.Context, in *pb.GetFriendRequest) (*pb.G
 
 func (s *friendsServer) GetRequests(ctx context.Context, in *pb.GetRequestsFriendRequest) (*pb.GetRequestsFriendResponse, error) {
 	var requests []Request
-	if err := s.db.Model(Request{}).Where("to = ? AND accepted = ?", in.GetUserId(), false).Find(&requests); err != nil {
-		return nil, status.Error(codes.Internal, err)
+	if err := s.db.Model(Request{}).Where(`"to" = ? AND "accepted" = ?`, in.GetUserId(), false).Find(&requests).Error; err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	var userIDs []uint64
 	for _, v := range requests {
-		userIDs = append(userIDs, v.To)
+		userIDs = append(userIDs, v.From)
 	}
 
 	return &pb.GetRequestsFriendResponse{
-		Requests: userIds,
+		Requests: userIDs,
 	}, nil
 }
 
 func (s *friendsServer) Accept(ctx context.Context, in *pb.AcceptFriendRequest) (*pb.AcceptFriendResponse, error) {
-	if err := s.db.Model(Request{}).Where("from = ? AND to =?", in.GetFriendId(), in.GetUserId()).Update("accepted", true); err != nil {
-		return nil, status.Error(codes.Internal, err)
+	res := s.db.Model(Request{}).Where(`"from" = ? AND "to" = ? AND accepted = ?`, in.GetFriendId(), in.GetUserId(), false).Update("accepted", true)
+	if res.Error != nil {
+		return nil, status.Error(codes.Internal, res.Error.Error())
+	}
+	if res.RowsAffected < 1 {
+		return nil, status.Error(codes.FailedPrecondition, "no request to accept")
 	}
 
 	return &pb.AcceptFriendResponse{}, nil
 }
 
 func (s *friendsServer) Deny(ctx context.Context, in *pb.DenyFriendRequest) (*pb.DenyFriendResponse, error) {
-	if err := s.db.Where("(from = ? AND to = ?) OR (from = ? AND to = ?)", in.GetUserId(), in.GetFriendId(), in.GetFriendId(), in.GetUserId()).Delete(Request{}); err != nil {
-		return nil, status.Error(codes.Internal, err)
+	res := s.db.Where(`"from" = ? AND "to" = ? AND accepted = ?`, in.GetFriendId(), in.GetUserId(), false).Delete(Request{})
+	if res.Error != nil {
+		return nil, status.Error(codes.Internal, res.Error.Error())
+	}
+	if res.RowsAffected < 1 {
+		return nil, status.Error(codes.FailedPrecondition, "no request to deny")
 	}
 
 	return &pb.DenyFriendResponse{}, nil

@@ -9,5 +9,6 @@ require (
 	github.com/sirupsen/logrus v1.2.0
 	github.com/spf13/viper v1.6.2
 	github.com/stretchr/testify v1.5.1
+	golang.org/x/crypto v0.0.0-20191205180655-e7c4368fe9dd // indirect
 	google.golang.org/grpc v1.21.0
 )

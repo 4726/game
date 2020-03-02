@@ -510,28 +510,28 @@ func init() {
 func init() { proto.RegisterFile("friends.proto", fileDescriptor_ef2cbb5c12e56bfb) }
 
 var fileDescriptor_ef2cbb5c12e56bfb = []byte{
-	// 333 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x53, 0xc1, 0x4e, 0x83, 0x40,
-	0x10, 0x4d, 0x0b, 0xa1, 0x75, 0x8c, 0x49, 0xd9, 0xd2, 0x16, 0x51, 0x93, 0x86, 0x53, 0x13, 0x23,
-	0x07, 0x1a, 0xe3, 0xc1, 0x13, 0xb1, 0x11, 0xd1, 0x1b, 0x3f, 0x60, 0xa4, 0x3b, 0xc6, 0x26, 0x06,
-	0x90, 0xdd, 0x1e, 0xfc, 0x66, 0x7f, 0xc2, 0xc0, 0xac, 0x4a, 0x29, 0x26, 0x3d, 0x70, 0xdc, 0x79,
-	0x33, 0xef, 0x0d, 0xef, 0x0d, 0x70, 0xf2, 0x5a, 0x6c, 0x30, 0xe5, 0xc2, 0xcb, 0x8b, 0x4c, 0x66,
-	0xac, 0x9f, 0x27, 0xee, 0x03, 0x8c, 0x02, 0xce, 0xef, 0xab, 0x7a, 0x8c, 0x1f, 0x5b, 0x14, 0x92,
-	0xcd, 0x60, 0xb0, 0x15, 0x58, 0x3c, 0x6f, 0xb8, 0xdd, 0x9b, 0xf7, 0x16, 0x7a, 0x6c, 0x94, 0xcf,
-	0x88, 0xb3, 0x33, 0x38, 0x22, 0x86, 0x12, 0xea, 0x57, 0xd0, 0x90, 0x0a, 0x11, 0x77, 0xc7, 0x60,
-	0xd6, 0x98, 0x44, 0x9e, 0xa5, 0x02, 0xdd, 0x27, 0x18, 0xaf, 0xf0, 0x1d, 0x25, 0x76, 0xa1, 0x30,
-	0x05, 0x6b, 0x97, 0x4c, 0x89, 0x5c, 0xc2, 0x28, 0x44, 0x79, 0x98, 0x82, 0x7b, 0x05, 0x66, 0xad,
-	0x99, 0x18, 0x98, 0x0d, 0x03, 0x65, 0x8d, 0xdd, 0x9b, 0x6b, 0x0b, 0x3d, 0xfe, 0x79, 0xba, 0x4b,
-	0xb0, 0x43, 0x94, 0x8a, 0x55, 0x1c, 0xa8, 0x71, 0x03, 0xa7, 0x2d, 0x43, 0x4a, 0xcb, 0x81, 0x61,
-	0xa1, 0x10, 0x25, 0xf6, 0xfb, 0x2e, 0xed, 0x0a, 0xd6, 0x6b, 0xcc, 0x65, 0x47, 0x76, 0xed, 0x92,
-	0x29, 0xbb, 0x22, 0x30, 0x57, 0x98, 0x7e, 0x76, 0x21, 0x61, 0x01, 0xab, 0x53, 0x91, 0x80, 0xff,
-	0xd5, 0x07, 0xfd, 0xee, 0xed, 0x45, 0x32, 0x1f, 0xb4, 0x80, 0x73, 0x66, 0x79, 0x79, 0xe2, 0x35,
-	0xaf, 0xcc, 0x99, 0x34, 0xaa, 0xca, 0x9e, 0x5b, 0x30, 0x28, 0x64, 0x36, 0x2b, 0x1b, 0x5a, 0xae,
-	0xc7, 0xb1, 0xf7, 0x01, 0x35, 0xec, 0x83, 0x16, 0xa2, 0x24, 0xc1, 0xe6, 0x49, 0x90, 0xe0, 0x7e,
-	0xf6, 0x8f, 0x70, 0x5c, 0x0b, 0x8b, 0x9d, 0xab, 0xae, 0xd6, 0xc8, 0x9d, 0x8b, 0x7f, 0xd0, 0xbf,
-	0xe5, 0xc9, 0x72, 0x5a, 0xbe, 0x25, 0x4b, 0x5a, 0xbe, 0x2d, 0x17, 0x76, 0x0d, 0x7a, 0x69, 0x26,
-	0x9b, 0xd0, 0xe7, 0x35, 0x12, 0x72, 0xa6, 0xcd, 0x32, 0x8d, 0x25, 0x46, 0xf5, 0x33, 0x2f, 0xbf,
-	0x03, 0x00, 0x00, 0xff, 0xff, 0xa4, 0xc5, 0xd8, 0x5c, 0xdd, 0x03, 0x00, 0x00,
+	// 332 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x53, 0x41, 0x6b, 0xb3, 0x40,
+	0x10, 0x25, 0x2a, 0x9a, 0x6f, 0x3e, 0x0a, 0x71, 0x63, 0x12, 0x6b, 0x5b, 0x08, 0x9e, 0x02, 0xa5,
+	0x1e, 0x0c, 0xa5, 0x87, 0x9e, 0x84, 0x50, 0x6b, 0x7b, 0xf3, 0x0f, 0x14, 0xcc, 0x4e, 0x21, 0x50,
+	0xd4, 0xba, 0x9b, 0x43, 0xff, 0x74, 0x7f, 0x43, 0xd1, 0xd9, 0xb6, 0xc6, 0x58, 0xc8, 0xc1, 0xe3,
+	0xce, 0x9b, 0x79, 0x6f, 0x7c, 0x6f, 0x84, 0xb3, 0xd7, 0x6a, 0x87, 0x39, 0x17, 0x41, 0x59, 0x15,
+	0xb2, 0x60, 0x5a, 0x99, 0xf9, 0x8f, 0x30, 0x89, 0x38, 0x7f, 0x68, 0xea, 0x29, 0xbe, 0xef, 0x51,
+	0x48, 0xb6, 0x00, 0x6b, 0x2f, 0xb0, 0x7a, 0xd9, 0x71, 0x77, 0xb4, 0x1c, 0xad, 0x8c, 0xd4, 0xac,
+	0x9f, 0x09, 0x67, 0x17, 0xf0, 0x8f, 0x18, 0x6a, 0x48, 0x6b, 0xa0, 0x31, 0x15, 0x12, 0xee, 0x4f,
+	0xc1, 0x6e, 0x31, 0x89, 0xb2, 0xc8, 0x05, 0xfa, 0xcf, 0x30, 0xdd, 0xe0, 0x1b, 0x4a, 0x1c, 0x42,
+	0x61, 0x0e, 0xce, 0x21, 0x99, 0x12, 0xb9, 0x86, 0x49, 0x8c, 0xf2, 0x34, 0x05, 0xff, 0x06, 0xec,
+	0x56, 0x33, 0x31, 0x30, 0x17, 0x2c, 0x65, 0x8d, 0x3b, 0x5a, 0xea, 0x2b, 0x23, 0xfd, 0x7e, 0xfa,
+	0x6b, 0x70, 0x63, 0x94, 0x8a, 0x55, 0x9c, 0xa8, 0x71, 0x07, 0xe7, 0x3d, 0x43, 0x4a, 0xcb, 0x83,
+	0x71, 0xa5, 0x10, 0x25, 0xf6, 0xf3, 0xae, 0xed, 0x8a, 0xb6, 0x5b, 0x2c, 0xe5, 0x40, 0x76, 0x1d,
+	0x92, 0x29, 0xbb, 0x12, 0xb0, 0x37, 0x98, 0x7f, 0x0c, 0x21, 0xe1, 0x00, 0x6b, 0x53, 0x91, 0x40,
+	0xf8, 0xa9, 0x81, 0x45, 0x25, 0xc1, 0x42, 0xd0, 0x23, 0xce, 0x99, 0x13, 0x94, 0x59, 0xd0, 0x3d,
+	0x34, 0x6f, 0xd6, 0xa9, 0x2a, 0x87, 0xee, 0xc1, 0xa4, 0x9c, 0xd9, 0xa2, 0x6e, 0xe8, 0x39, 0x20,
+	0xcf, 0x3d, 0x06, 0xd4, 0x70, 0x08, 0x7a, 0x8c, 0x92, 0x04, 0xbb, 0x57, 0x41, 0x82, 0xc7, 0xf1,
+	0x3f, 0xc1, 0xff, 0x56, 0x5e, 0xec, 0x52, 0x75, 0xf5, 0xa6, 0xee, 0x5d, 0xfd, 0x81, 0xfe, 0x2e,
+	0x4f, 0xae, 0xd3, 0xf2, 0x3d, 0x71, 0xd2, 0xf2, 0x7d, 0xd1, 0xb0, 0x5b, 0x30, 0x6a, 0x3f, 0xd9,
+	0x8c, 0x3e, 0xaf, 0x13, 0x92, 0x37, 0xef, 0x96, 0x69, 0x2c, 0x33, 0x9b, 0xff, 0x79, 0xfd, 0x15,
+	0x00, 0x00, 0xff, 0xff, 0x93, 0xf6, 0x01, 0x23, 0xe0, 0x03, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -542,10 +542,10 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// ChatClient is the client API for Chat service.
+// FriendsClient is the client API for Friends service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
-type ChatClient interface {
+type FriendsClient interface {
 	Add(ctx context.Context, in *AddFriendRequest, opts ...grpc.CallOption) (*AddFriendResponse, error)
 	Delete(ctx context.Context, in *DeleteFriendRequest, opts ...grpc.CallOption) (*DeleteFriendResponse, error)
 	Get(ctx context.Context, in *GetFriendRequest, opts ...grpc.CallOption) (*GetFriendResponse, error)
@@ -554,70 +554,70 @@ type ChatClient interface {
 	Deny(ctx context.Context, in *DenyFriendRequest, opts ...grpc.CallOption) (*DenyFriendResponse, error)
 }
 
-type chatClient struct {
+type friendsClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewChatClient(cc *grpc.ClientConn) ChatClient {
-	return &chatClient{cc}
+func NewFriendsClient(cc *grpc.ClientConn) FriendsClient {
+	return &friendsClient{cc}
 }
 
-func (c *chatClient) Add(ctx context.Context, in *AddFriendRequest, opts ...grpc.CallOption) (*AddFriendResponse, error) {
+func (c *friendsClient) Add(ctx context.Context, in *AddFriendRequest, opts ...grpc.CallOption) (*AddFriendResponse, error) {
 	out := new(AddFriendResponse)
-	err := c.cc.Invoke(ctx, "/pb.Chat/Add", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.Friends/Add", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chatClient) Delete(ctx context.Context, in *DeleteFriendRequest, opts ...grpc.CallOption) (*DeleteFriendResponse, error) {
+func (c *friendsClient) Delete(ctx context.Context, in *DeleteFriendRequest, opts ...grpc.CallOption) (*DeleteFriendResponse, error) {
 	out := new(DeleteFriendResponse)
-	err := c.cc.Invoke(ctx, "/pb.Chat/Delete", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.Friends/Delete", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chatClient) Get(ctx context.Context, in *GetFriendRequest, opts ...grpc.CallOption) (*GetFriendResponse, error) {
+func (c *friendsClient) Get(ctx context.Context, in *GetFriendRequest, opts ...grpc.CallOption) (*GetFriendResponse, error) {
 	out := new(GetFriendResponse)
-	err := c.cc.Invoke(ctx, "/pb.Chat/Get", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.Friends/Get", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chatClient) GetRequests(ctx context.Context, in *GetRequestsFriendRequest, opts ...grpc.CallOption) (*GetRequestsFriendResponse, error) {
+func (c *friendsClient) GetRequests(ctx context.Context, in *GetRequestsFriendRequest, opts ...grpc.CallOption) (*GetRequestsFriendResponse, error) {
 	out := new(GetRequestsFriendResponse)
-	err := c.cc.Invoke(ctx, "/pb.Chat/GetRequests", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.Friends/GetRequests", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chatClient) Accept(ctx context.Context, in *AcceptFriendRequest, opts ...grpc.CallOption) (*AcceptFriendResponse, error) {
+func (c *friendsClient) Accept(ctx context.Context, in *AcceptFriendRequest, opts ...grpc.CallOption) (*AcceptFriendResponse, error) {
 	out := new(AcceptFriendResponse)
-	err := c.cc.Invoke(ctx, "/pb.Chat/Accept", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.Friends/Accept", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chatClient) Deny(ctx context.Context, in *DenyFriendRequest, opts ...grpc.CallOption) (*DenyFriendResponse, error) {
+func (c *friendsClient) Deny(ctx context.Context, in *DenyFriendRequest, opts ...grpc.CallOption) (*DenyFriendResponse, error) {
 	out := new(DenyFriendResponse)
-	err := c.cc.Invoke(ctx, "/pb.Chat/Deny", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.Friends/Deny", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// ChatServer is the server API for Chat service.
-type ChatServer interface {
+// FriendsServer is the server API for Friends service.
+type FriendsServer interface {
 	Add(context.Context, *AddFriendRequest) (*AddFriendResponse, error)
 	Delete(context.Context, *DeleteFriendRequest) (*DeleteFriendResponse, error)
 	Get(context.Context, *GetFriendRequest) (*GetFriendResponse, error)
@@ -626,168 +626,168 @@ type ChatServer interface {
 	Deny(context.Context, *DenyFriendRequest) (*DenyFriendResponse, error)
 }
 
-// UnimplementedChatServer can be embedded to have forward compatible implementations.
-type UnimplementedChatServer struct {
+// UnimplementedFriendsServer can be embedded to have forward compatible implementations.
+type UnimplementedFriendsServer struct {
 }
 
-func (*UnimplementedChatServer) Add(ctx context.Context, req *AddFriendRequest) (*AddFriendResponse, error) {
+func (*UnimplementedFriendsServer) Add(ctx context.Context, req *AddFriendRequest) (*AddFriendResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Add not implemented")
 }
-func (*UnimplementedChatServer) Delete(ctx context.Context, req *DeleteFriendRequest) (*DeleteFriendResponse, error) {
+func (*UnimplementedFriendsServer) Delete(ctx context.Context, req *DeleteFriendRequest) (*DeleteFriendResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
-func (*UnimplementedChatServer) Get(ctx context.Context, req *GetFriendRequest) (*GetFriendResponse, error) {
+func (*UnimplementedFriendsServer) Get(ctx context.Context, req *GetFriendRequest) (*GetFriendResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (*UnimplementedChatServer) GetRequests(ctx context.Context, req *GetRequestsFriendRequest) (*GetRequestsFriendResponse, error) {
+func (*UnimplementedFriendsServer) GetRequests(ctx context.Context, req *GetRequestsFriendRequest) (*GetRequestsFriendResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRequests not implemented")
 }
-func (*UnimplementedChatServer) Accept(ctx context.Context, req *AcceptFriendRequest) (*AcceptFriendResponse, error) {
+func (*UnimplementedFriendsServer) Accept(ctx context.Context, req *AcceptFriendRequest) (*AcceptFriendResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Accept not implemented")
 }
-func (*UnimplementedChatServer) Deny(ctx context.Context, req *DenyFriendRequest) (*DenyFriendResponse, error) {
+func (*UnimplementedFriendsServer) Deny(ctx context.Context, req *DenyFriendRequest) (*DenyFriendResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Deny not implemented")
 }
 
-func RegisterChatServer(s *grpc.Server, srv ChatServer) {
-	s.RegisterService(&_Chat_serviceDesc, srv)
+func RegisterFriendsServer(s *grpc.Server, srv FriendsServer) {
+	s.RegisterService(&_Friends_serviceDesc, srv)
 }
 
-func _Chat_Add_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Friends_Add_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddFriendRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChatServer).Add(ctx, in)
+		return srv.(FriendsServer).Add(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.Chat/Add",
+		FullMethod: "/pb.Friends/Add",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChatServer).Add(ctx, req.(*AddFriendRequest))
+		return srv.(FriendsServer).Add(ctx, req.(*AddFriendRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Chat_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Friends_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteFriendRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChatServer).Delete(ctx, in)
+		return srv.(FriendsServer).Delete(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.Chat/Delete",
+		FullMethod: "/pb.Friends/Delete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChatServer).Delete(ctx, req.(*DeleteFriendRequest))
+		return srv.(FriendsServer).Delete(ctx, req.(*DeleteFriendRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Chat_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Friends_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetFriendRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChatServer).Get(ctx, in)
+		return srv.(FriendsServer).Get(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.Chat/Get",
+		FullMethod: "/pb.Friends/Get",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChatServer).Get(ctx, req.(*GetFriendRequest))
+		return srv.(FriendsServer).Get(ctx, req.(*GetFriendRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Chat_GetRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Friends_GetRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetRequestsFriendRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChatServer).GetRequests(ctx, in)
+		return srv.(FriendsServer).GetRequests(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.Chat/GetRequests",
+		FullMethod: "/pb.Friends/GetRequests",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChatServer).GetRequests(ctx, req.(*GetRequestsFriendRequest))
+		return srv.(FriendsServer).GetRequests(ctx, req.(*GetRequestsFriendRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Chat_Accept_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Friends_Accept_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AcceptFriendRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChatServer).Accept(ctx, in)
+		return srv.(FriendsServer).Accept(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.Chat/Accept",
+		FullMethod: "/pb.Friends/Accept",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChatServer).Accept(ctx, req.(*AcceptFriendRequest))
+		return srv.(FriendsServer).Accept(ctx, req.(*AcceptFriendRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Chat_Deny_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Friends_Deny_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DenyFriendRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChatServer).Deny(ctx, in)
+		return srv.(FriendsServer).Deny(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.Chat/Deny",
+		FullMethod: "/pb.Friends/Deny",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChatServer).Deny(ctx, req.(*DenyFriendRequest))
+		return srv.(FriendsServer).Deny(ctx, req.(*DenyFriendRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-var _Chat_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "pb.Chat",
-	HandlerType: (*ChatServer)(nil),
+var _Friends_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "pb.Friends",
+	HandlerType: (*FriendsServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Add",
-			Handler:    _Chat_Add_Handler,
+			Handler:    _Friends_Add_Handler,
 		},
 		{
 			MethodName: "Delete",
-			Handler:    _Chat_Delete_Handler,
+			Handler:    _Friends_Delete_Handler,
 		},
 		{
 			MethodName: "Get",
-			Handler:    _Chat_Get_Handler,
+			Handler:    _Friends_Get_Handler,
 		},
 		{
 			MethodName: "GetRequests",
-			Handler:    _Chat_GetRequests_Handler,
+			Handler:    _Friends_GetRequests_Handler,
 		},
 		{
 			MethodName: "Accept",
-			Handler:    _Chat_Accept_Handler,
+			Handler:    _Friends_Accept_Handler,
 		},
 		{
 			MethodName: "Deny",
-			Handler:    _Chat_Deny_Handler,
+			Handler:    _Friends_Deny_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
