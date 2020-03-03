@@ -10,6 +10,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type test struct {
@@ -111,7 +113,7 @@ func TestAddSameUserAndFriend(t *testing.T) {
 		FriendId: 1,
 	}
 	_, err := te.c.Add(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errCannotAddSelf.Error()), err)
 	te.assertRequestsEqual(t, requests, te.queryAll(t))
 }
 
@@ -125,7 +127,7 @@ func TestAddAlreadyFriends(t *testing.T) {
 		FriendId: 2,
 	}
 	_, err := te.c.Add(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errCannotSendFriendRequest.Error()), err)
 	te.assertRequestsEqual(t, requests, te.queryAll(t))
 }
 
@@ -139,7 +141,7 @@ func TestAddAlreadyFriendsReverse(t *testing.T) {
 		FriendId: 1,
 	}
 	_, err := te.c.Add(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errCannotSendFriendRequest.Error()), err)
 	te.assertRequestsEqual(t, requests, te.queryAll(t))
 }
 
@@ -153,7 +155,7 @@ func TestAddHasPendingRequest(t *testing.T) {
 		FriendId: 2,
 	}
 	_, err := te.c.Add(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errCannotSendFriendRequest.Error()), err)
 	te.assertRequestsEqual(t, requests, te.queryAll(t))
 }
 
@@ -167,7 +169,7 @@ func TestAddAlreadyRequested(t *testing.T) {
 		FriendId: 3,
 	}
 	_, err := te.c.Add(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errCannotSendFriendRequest.Error()), err)
 	te.assertRequestsEqual(t, requests, te.queryAll(t))
 }
 
@@ -200,7 +202,7 @@ func TestDeleteNotFriends(t *testing.T) {
 		FriendId: 4,
 	}
 	_, err := te.c.Delete(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errNotFriend.Error()), err)
 	te.assertRequestsEqual(t, requests, te.queryAll(t))
 }
 
@@ -214,7 +216,7 @@ func TestDeleteHasPendingRequest(t *testing.T) {
 		FriendId: 2,
 	}
 	_, err := te.c.Delete(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errNotFriend.Error()), err)
 	te.assertRequestsEqual(t, requests, te.queryAll(t))
 }
 
@@ -228,7 +230,7 @@ func TestDeleteAlreadyRequested(t *testing.T) {
 		FriendId: 3,
 	}
 	_, err := te.c.Delete(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errNotFriend.Error()), err)
 	te.assertRequestsEqual(t, requests, te.queryAll(t))
 }
 
@@ -346,7 +348,7 @@ func TestAcceptAlreadyFriends(t *testing.T) {
 		FriendId: 2,
 	}
 	_, err := te.c.Accept(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errNoRequest.Error()), err)
 	te.assertRequestsEqual(t, requests, te.queryAll(t))
 }
 
@@ -360,7 +362,7 @@ func TestAcceptNoRequest(t *testing.T) {
 		FriendId: 3,
 	}
 	_, err := te.c.Accept(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errNoRequest.Error()), err)
 	te.assertRequestsEqual(t, requests, te.queryAll(t))
 }
 
@@ -374,7 +376,7 @@ func TestAcceptAlreadyRequsted(t *testing.T) {
 		FriendId: 5,
 	}
 	_, err := te.c.Accept(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errNoRequest.Error()), err)
 	te.assertRequestsEqual(t, requests, te.queryAll(t))
 }
 
@@ -409,7 +411,7 @@ func TestDenyAlreadyFriends(t *testing.T) {
 		FriendId: 2,
 	}
 	_, err := te.c.Deny(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errNoRequest.Error()), err)
 	te.assertRequestsEqual(t, requests, te.queryAll(t))
 }
 
@@ -423,7 +425,7 @@ func TestDenyNoRequest(t *testing.T) {
 		FriendId: 3,
 	}
 	_, err := te.c.Deny(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errNoRequest.Error()), err)
 	te.assertRequestsEqual(t, requests, te.queryAll(t))
 }
 
@@ -437,7 +439,7 @@ func TestDenyAlreadyRequsted(t *testing.T) {
 		FriendId: 5,
 	}
 	_, err := te.c.Deny(context.Background(), in)
-	assert.Error(t, err)
+	assert.Equal(t, status.Error(codes.FailedPrecondition, errNoRequest.Error()), err)
 	te.assertRequestsEqual(t, requests, te.queryAll(t))
 }
 

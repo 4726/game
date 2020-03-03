@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/4726/game/services/social/friends/config"
@@ -11,6 +12,13 @@ import (
 	_ "github.com/lib/pq"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+)
+
+var (
+	errCannotAddSelf           = errors.New("cannot add self")
+	errCannotSendFriendRequest = errors.New("cannot send friend request")
+	errNotFriend               = errors.New("not friends")
+	errNoRequest               = errors.New("no request")
 )
 
 type friendsServer struct {
@@ -48,7 +56,6 @@ func newFriendsServer(cfg config.Config) (*friendsServer, error) {
 	if err := db.AutoMigrate(&Request{}).Error; err != nil {
 		return nil, err
 	}
-	db.LogMode(true)
 
 	return &friendsServer{
 		db:  db,
@@ -58,7 +65,7 @@ func newFriendsServer(cfg config.Config) (*friendsServer, error) {
 
 func (s *friendsServer) Add(ctx context.Context, in *pb.AddFriendRequest) (*pb.AddFriendResponse, error) {
 	if in.GetUserId() == in.GetFriendId() {
-		return nil, status.Error(codes.FailedPrecondition, "user cannot add themselves")
+		return nil, status.Error(codes.FailedPrecondition, errCannotAddSelf.Error())
 	}
 
 	request := Request{
@@ -76,7 +83,7 @@ func (s *friendsServer) Add(ctx context.Context, in *pb.AddFriendRequest) (*pb.A
 	}
 
 	if res.RowsAffected < 1 {
-		return nil, status.Error(codes.FailedPrecondition, "cannot send friend request")
+		return nil, status.Error(codes.FailedPrecondition, errCannotSendFriendRequest.Error())
 	}
 
 	return &pb.AddFriendResponse{}, nil
@@ -88,7 +95,7 @@ func (s *friendsServer) Delete(ctx context.Context, in *pb.DeleteFriendRequest) 
 		return nil, status.Error(codes.Internal, res.Error.Error())
 	}
 	if res.RowsAffected < 1 {
-		return nil, status.Error(codes.FailedPrecondition, "friend does not exist")
+		return nil, status.Error(codes.FailedPrecondition, errNotFriend.Error())
 	}
 
 	return &pb.DeleteFriendResponse{}, nil
@@ -136,7 +143,7 @@ func (s *friendsServer) Accept(ctx context.Context, in *pb.AcceptFriendRequest) 
 		return nil, status.Error(codes.Internal, res.Error.Error())
 	}
 	if res.RowsAffected < 1 {
-		return nil, status.Error(codes.FailedPrecondition, "no request to accept")
+		return nil, status.Error(codes.FailedPrecondition, errNoRequest.Error())
 	}
 
 	return &pb.AcceptFriendResponse{}, nil
@@ -148,7 +155,7 @@ func (s *friendsServer) Deny(ctx context.Context, in *pb.DenyFriendRequest) (*pb
 		return nil, status.Error(codes.Internal, res.Error.Error())
 	}
 	if res.RowsAffected < 1 {
-		return nil, status.Error(codes.FailedPrecondition, "no request to deny")
+		return nil, status.Error(codes.FailedPrecondition, errNoRequest.Error())
 	}
 
 	return &pb.DenyFriendResponse{}, nil

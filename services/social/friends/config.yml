@@ -1,0 +1,10 @@
+db:
+  name: "postgres"
+  user: "postgres"
+  password: "postgres"
+  host: "localhost"
+  port: 5432
+metrics:
+  port: 14001
+  route: "/metrics"
+port: 14000
