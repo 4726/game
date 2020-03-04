@@ -387,10 +387,33 @@ func (m *GameBuyResponse) GetError() string {
 }
 
 type GameInputRequest struct {
-	InputKey             string   `protobuf:"bytes,1,opt,name=input_key,json=inputKey,proto3" json:"input_key,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	// Types that are valid to be assigned to Key:
+	//	*GameInputRequest_PrimaryWeapon
+	//	*GameInputRequest_SecondaryWeapon
+	//	*GameInputRequest_KnifeWeapon
+	//	*GameInputRequest_MoveLeft
+	//	*GameInputRequest_MoveLeftUp
+	//	*GameInputRequest_MoveLeftDown
+	//	*GameInputRequest_MoveRight
+	//	*GameInputRequest_MoveRightUp
+	//	*GameInputRequest_MoveRightDown
+	//	*GameInputRequest_MoveUp
+	//	*GameInputRequest_MoveUpLeft
+	//	*GameInputRequest_MoveUpRight
+	//	*GameInputRequest_MoveDown
+	//	*GameInputRequest_MoveDownLeft
+	//	*GameInputRequest_MoveDownRight
+	//	*GameInputRequest_Shoot
+	//	*GameInputRequest_Reload
+	//	*GameInputRequest_PickupWeapon
+	//	*GameInputRequest_Crouch
+	//	*GameInputRequest_Jump
+	//	*GameInputRequest_Ping
+	//	*GameInputRequest_Orientation
+	Key                  isGameInputRequest_Key `protobuf_oneof:"key"`
+	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
+	XXX_unrecognized     []byte                 `json:"-"`
+	XXX_sizecache        int32                  `json:"-"`
 }
 
 func (m *GameInputRequest) Reset()         { *m = GameInputRequest{} }
@@ -418,11 +441,329 @@ func (m *GameInputRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_GameInputRequest proto.InternalMessageInfo
 
-func (m *GameInputRequest) GetInputKey() string {
+type isGameInputRequest_Key interface {
+	isGameInputRequest_Key()
+}
+
+type GameInputRequest_PrimaryWeapon struct {
+	PrimaryWeapon *GamePrimaryWeapon `protobuf:"bytes,1,opt,name=primary_weapon,json=primaryWeapon,proto3,oneof"`
+}
+
+type GameInputRequest_SecondaryWeapon struct {
+	SecondaryWeapon *GameSecondaryWeapon `protobuf:"bytes,2,opt,name=secondary_weapon,json=secondaryWeapon,proto3,oneof"`
+}
+
+type GameInputRequest_KnifeWeapon struct {
+	KnifeWeapon *GameKnifeWeapon `protobuf:"bytes,3,opt,name=knife_weapon,json=knifeWeapon,proto3,oneof"`
+}
+
+type GameInputRequest_MoveLeft struct {
+	MoveLeft *GameMoveLeft `protobuf:"bytes,4,opt,name=move_left,json=moveLeft,proto3,oneof"`
+}
+
+type GameInputRequest_MoveLeftUp struct {
+	MoveLeftUp *GameMoveLeftUp `protobuf:"bytes,5,opt,name=move_left_up,json=moveLeftUp,proto3,oneof"`
+}
+
+type GameInputRequest_MoveLeftDown struct {
+	MoveLeftDown *GameMoveLeftDown `protobuf:"bytes,6,opt,name=move_left_down,json=moveLeftDown,proto3,oneof"`
+}
+
+type GameInputRequest_MoveRight struct {
+	MoveRight *GameMoveRight `protobuf:"bytes,7,opt,name=move_right,json=moveRight,proto3,oneof"`
+}
+
+type GameInputRequest_MoveRightUp struct {
+	MoveRightUp *GameMoveRightUp `protobuf:"bytes,8,opt,name=move_right_up,json=moveRightUp,proto3,oneof"`
+}
+
+type GameInputRequest_MoveRightDown struct {
+	MoveRightDown *GameMoveRightDown `protobuf:"bytes,9,opt,name=move_right_down,json=moveRightDown,proto3,oneof"`
+}
+
+type GameInputRequest_MoveUp struct {
+	MoveUp *GameMoveUp `protobuf:"bytes,10,opt,name=move_up,json=moveUp,proto3,oneof"`
+}
+
+type GameInputRequest_MoveUpLeft struct {
+	MoveUpLeft *GameMoveUpLeft `protobuf:"bytes,11,opt,name=move_up_left,json=moveUpLeft,proto3,oneof"`
+}
+
+type GameInputRequest_MoveUpRight struct {
+	MoveUpRight *GameMoveUpRight `protobuf:"bytes,12,opt,name=move_up_right,json=moveUpRight,proto3,oneof"`
+}
+
+type GameInputRequest_MoveDown struct {
+	MoveDown *GameMoveDown `protobuf:"bytes,13,opt,name=move_down,json=moveDown,proto3,oneof"`
+}
+
+type GameInputRequest_MoveDownLeft struct {
+	MoveDownLeft *GameMoveDownLeft `protobuf:"bytes,14,opt,name=move_down_left,json=moveDownLeft,proto3,oneof"`
+}
+
+type GameInputRequest_MoveDownRight struct {
+	MoveDownRight *GameMoveDownRight `protobuf:"bytes,15,opt,name=move_down_right,json=moveDownRight,proto3,oneof"`
+}
+
+type GameInputRequest_Shoot struct {
+	Shoot *GameShoot `protobuf:"bytes,16,opt,name=shoot,proto3,oneof"`
+}
+
+type GameInputRequest_Reload struct {
+	Reload *GameReload `protobuf:"bytes,17,opt,name=reload,proto3,oneof"`
+}
+
+type GameInputRequest_PickupWeapon struct {
+	PickupWeapon *GamePickupWeapon `protobuf:"bytes,18,opt,name=pickup_weapon,json=pickupWeapon,proto3,oneof"`
+}
+
+type GameInputRequest_Crouch struct {
+	Crouch *GameCrouch `protobuf:"bytes,19,opt,name=crouch,proto3,oneof"`
+}
+
+type GameInputRequest_Jump struct {
+	Jump *GameJump `protobuf:"bytes,20,opt,name=jump,proto3,oneof"`
+}
+
+type GameInputRequest_Ping struct {
+	Ping *GamePing `protobuf:"bytes,21,opt,name=ping,proto3,oneof"`
+}
+
+type GameInputRequest_Orientation struct {
+	Orientation *GameOrientation `protobuf:"bytes,22,opt,name=orientation,proto3,oneof"`
+}
+
+func (*GameInputRequest_PrimaryWeapon) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_SecondaryWeapon) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_KnifeWeapon) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_MoveLeft) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_MoveLeftUp) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_MoveLeftDown) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_MoveRight) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_MoveRightUp) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_MoveRightDown) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_MoveUp) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_MoveUpLeft) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_MoveUpRight) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_MoveDown) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_MoveDownLeft) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_MoveDownRight) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_Shoot) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_Reload) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_PickupWeapon) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_Crouch) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_Jump) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_Ping) isGameInputRequest_Key() {}
+
+func (*GameInputRequest_Orientation) isGameInputRequest_Key() {}
+
+func (m *GameInputRequest) GetKey() isGameInputRequest_Key {
 	if m != nil {
-		return m.InputKey
+		return m.Key
 	}
-	return ""
+	return nil
+}
+
+func (m *GameInputRequest) GetPrimaryWeapon() *GamePrimaryWeapon {
+	if x, ok := m.GetKey().(*GameInputRequest_PrimaryWeapon); ok {
+		return x.PrimaryWeapon
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetSecondaryWeapon() *GameSecondaryWeapon {
+	if x, ok := m.GetKey().(*GameInputRequest_SecondaryWeapon); ok {
+		return x.SecondaryWeapon
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetKnifeWeapon() *GameKnifeWeapon {
+	if x, ok := m.GetKey().(*GameInputRequest_KnifeWeapon); ok {
+		return x.KnifeWeapon
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetMoveLeft() *GameMoveLeft {
+	if x, ok := m.GetKey().(*GameInputRequest_MoveLeft); ok {
+		return x.MoveLeft
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetMoveLeftUp() *GameMoveLeftUp {
+	if x, ok := m.GetKey().(*GameInputRequest_MoveLeftUp); ok {
+		return x.MoveLeftUp
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetMoveLeftDown() *GameMoveLeftDown {
+	if x, ok := m.GetKey().(*GameInputRequest_MoveLeftDown); ok {
+		return x.MoveLeftDown
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetMoveRight() *GameMoveRight {
+	if x, ok := m.GetKey().(*GameInputRequest_MoveRight); ok {
+		return x.MoveRight
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetMoveRightUp() *GameMoveRightUp {
+	if x, ok := m.GetKey().(*GameInputRequest_MoveRightUp); ok {
+		return x.MoveRightUp
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetMoveRightDown() *GameMoveRightDown {
+	if x, ok := m.GetKey().(*GameInputRequest_MoveRightDown); ok {
+		return x.MoveRightDown
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetMoveUp() *GameMoveUp {
+	if x, ok := m.GetKey().(*GameInputRequest_MoveUp); ok {
+		return x.MoveUp
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetMoveUpLeft() *GameMoveUpLeft {
+	if x, ok := m.GetKey().(*GameInputRequest_MoveUpLeft); ok {
+		return x.MoveUpLeft
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetMoveUpRight() *GameMoveUpRight {
+	if x, ok := m.GetKey().(*GameInputRequest_MoveUpRight); ok {
+		return x.MoveUpRight
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetMoveDown() *GameMoveDown {
+	if x, ok := m.GetKey().(*GameInputRequest_MoveDown); ok {
+		return x.MoveDown
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetMoveDownLeft() *GameMoveDownLeft {
+	if x, ok := m.GetKey().(*GameInputRequest_MoveDownLeft); ok {
+		return x.MoveDownLeft
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetMoveDownRight() *GameMoveDownRight {
+	if x, ok := m.GetKey().(*GameInputRequest_MoveDownRight); ok {
+		return x.MoveDownRight
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetShoot() *GameShoot {
+	if x, ok := m.GetKey().(*GameInputRequest_Shoot); ok {
+		return x.Shoot
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetReload() *GameReload {
+	if x, ok := m.GetKey().(*GameInputRequest_Reload); ok {
+		return x.Reload
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetPickupWeapon() *GamePickupWeapon {
+	if x, ok := m.GetKey().(*GameInputRequest_PickupWeapon); ok {
+		return x.PickupWeapon
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetCrouch() *GameCrouch {
+	if x, ok := m.GetKey().(*GameInputRequest_Crouch); ok {
+		return x.Crouch
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetJump() *GameJump {
+	if x, ok := m.GetKey().(*GameInputRequest_Jump); ok {
+		return x.Jump
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetPing() *GamePing {
+	if x, ok := m.GetKey().(*GameInputRequest_Ping); ok {
+		return x.Ping
+	}
+	return nil
+}
+
+func (m *GameInputRequest) GetOrientation() *GameOrientation {
+	if x, ok := m.GetKey().(*GameInputRequest_Orientation); ok {
+		return x.Orientation
+	}
+	return nil
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*GameInputRequest) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*GameInputRequest_PrimaryWeapon)(nil),
+		(*GameInputRequest_SecondaryWeapon)(nil),
+		(*GameInputRequest_KnifeWeapon)(nil),
+		(*GameInputRequest_MoveLeft)(nil),
+		(*GameInputRequest_MoveLeftUp)(nil),
+		(*GameInputRequest_MoveLeftDown)(nil),
+		(*GameInputRequest_MoveRight)(nil),
+		(*GameInputRequest_MoveRightUp)(nil),
+		(*GameInputRequest_MoveRightDown)(nil),
+		(*GameInputRequest_MoveUp)(nil),
+		(*GameInputRequest_MoveUpLeft)(nil),
+		(*GameInputRequest_MoveUpRight)(nil),
+		(*GameInputRequest_MoveDown)(nil),
+		(*GameInputRequest_MoveDownLeft)(nil),
+		(*GameInputRequest_MoveDownRight)(nil),
+		(*GameInputRequest_Shoot)(nil),
+		(*GameInputRequest_Reload)(nil),
+		(*GameInputRequest_PickupWeapon)(nil),
+		(*GameInputRequest_Crouch)(nil),
+		(*GameInputRequest_Jump)(nil),
+		(*GameInputRequest_Ping)(nil),
+		(*GameInputRequest_Orientation)(nil),
+	}
 }
 
 type GameStateResponse struct {
@@ -623,6 +964,744 @@ func (m *GamePlayerData) GetMoney() int32 {
 	return 0
 }
 
+type GamePrimaryWeapon struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GamePrimaryWeapon) Reset()         { *m = GamePrimaryWeapon{} }
+func (m *GamePrimaryWeapon) String() string { return proto.CompactTextString(m) }
+func (*GamePrimaryWeapon) ProtoMessage()    {}
+func (*GamePrimaryWeapon) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{9}
+}
+
+func (m *GamePrimaryWeapon) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GamePrimaryWeapon.Unmarshal(m, b)
+}
+func (m *GamePrimaryWeapon) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GamePrimaryWeapon.Marshal(b, m, deterministic)
+}
+func (m *GamePrimaryWeapon) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GamePrimaryWeapon.Merge(m, src)
+}
+func (m *GamePrimaryWeapon) XXX_Size() int {
+	return xxx_messageInfo_GamePrimaryWeapon.Size(m)
+}
+func (m *GamePrimaryWeapon) XXX_DiscardUnknown() {
+	xxx_messageInfo_GamePrimaryWeapon.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GamePrimaryWeapon proto.InternalMessageInfo
+
+type GameSecondaryWeapon struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameSecondaryWeapon) Reset()         { *m = GameSecondaryWeapon{} }
+func (m *GameSecondaryWeapon) String() string { return proto.CompactTextString(m) }
+func (*GameSecondaryWeapon) ProtoMessage()    {}
+func (*GameSecondaryWeapon) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{10}
+}
+
+func (m *GameSecondaryWeapon) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameSecondaryWeapon.Unmarshal(m, b)
+}
+func (m *GameSecondaryWeapon) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameSecondaryWeapon.Marshal(b, m, deterministic)
+}
+func (m *GameSecondaryWeapon) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameSecondaryWeapon.Merge(m, src)
+}
+func (m *GameSecondaryWeapon) XXX_Size() int {
+	return xxx_messageInfo_GameSecondaryWeapon.Size(m)
+}
+func (m *GameSecondaryWeapon) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameSecondaryWeapon.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameSecondaryWeapon proto.InternalMessageInfo
+
+type GameKnifeWeapon struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameKnifeWeapon) Reset()         { *m = GameKnifeWeapon{} }
+func (m *GameKnifeWeapon) String() string { return proto.CompactTextString(m) }
+func (*GameKnifeWeapon) ProtoMessage()    {}
+func (*GameKnifeWeapon) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{11}
+}
+
+func (m *GameKnifeWeapon) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameKnifeWeapon.Unmarshal(m, b)
+}
+func (m *GameKnifeWeapon) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameKnifeWeapon.Marshal(b, m, deterministic)
+}
+func (m *GameKnifeWeapon) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameKnifeWeapon.Merge(m, src)
+}
+func (m *GameKnifeWeapon) XXX_Size() int {
+	return xxx_messageInfo_GameKnifeWeapon.Size(m)
+}
+func (m *GameKnifeWeapon) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameKnifeWeapon.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameKnifeWeapon proto.InternalMessageInfo
+
+type GameMoveLeft struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameMoveLeft) Reset()         { *m = GameMoveLeft{} }
+func (m *GameMoveLeft) String() string { return proto.CompactTextString(m) }
+func (*GameMoveLeft) ProtoMessage()    {}
+func (*GameMoveLeft) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{12}
+}
+
+func (m *GameMoveLeft) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameMoveLeft.Unmarshal(m, b)
+}
+func (m *GameMoveLeft) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameMoveLeft.Marshal(b, m, deterministic)
+}
+func (m *GameMoveLeft) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameMoveLeft.Merge(m, src)
+}
+func (m *GameMoveLeft) XXX_Size() int {
+	return xxx_messageInfo_GameMoveLeft.Size(m)
+}
+func (m *GameMoveLeft) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameMoveLeft.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameMoveLeft proto.InternalMessageInfo
+
+type GameMoveLeftUp struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameMoveLeftUp) Reset()         { *m = GameMoveLeftUp{} }
+func (m *GameMoveLeftUp) String() string { return proto.CompactTextString(m) }
+func (*GameMoveLeftUp) ProtoMessage()    {}
+func (*GameMoveLeftUp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{13}
+}
+
+func (m *GameMoveLeftUp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameMoveLeftUp.Unmarshal(m, b)
+}
+func (m *GameMoveLeftUp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameMoveLeftUp.Marshal(b, m, deterministic)
+}
+func (m *GameMoveLeftUp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameMoveLeftUp.Merge(m, src)
+}
+func (m *GameMoveLeftUp) XXX_Size() int {
+	return xxx_messageInfo_GameMoveLeftUp.Size(m)
+}
+func (m *GameMoveLeftUp) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameMoveLeftUp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameMoveLeftUp proto.InternalMessageInfo
+
+type GameMoveLeftDown struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameMoveLeftDown) Reset()         { *m = GameMoveLeftDown{} }
+func (m *GameMoveLeftDown) String() string { return proto.CompactTextString(m) }
+func (*GameMoveLeftDown) ProtoMessage()    {}
+func (*GameMoveLeftDown) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{14}
+}
+
+func (m *GameMoveLeftDown) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameMoveLeftDown.Unmarshal(m, b)
+}
+func (m *GameMoveLeftDown) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameMoveLeftDown.Marshal(b, m, deterministic)
+}
+func (m *GameMoveLeftDown) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameMoveLeftDown.Merge(m, src)
+}
+func (m *GameMoveLeftDown) XXX_Size() int {
+	return xxx_messageInfo_GameMoveLeftDown.Size(m)
+}
+func (m *GameMoveLeftDown) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameMoveLeftDown.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameMoveLeftDown proto.InternalMessageInfo
+
+type GameMoveRight struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameMoveRight) Reset()         { *m = GameMoveRight{} }
+func (m *GameMoveRight) String() string { return proto.CompactTextString(m) }
+func (*GameMoveRight) ProtoMessage()    {}
+func (*GameMoveRight) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{15}
+}
+
+func (m *GameMoveRight) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameMoveRight.Unmarshal(m, b)
+}
+func (m *GameMoveRight) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameMoveRight.Marshal(b, m, deterministic)
+}
+func (m *GameMoveRight) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameMoveRight.Merge(m, src)
+}
+func (m *GameMoveRight) XXX_Size() int {
+	return xxx_messageInfo_GameMoveRight.Size(m)
+}
+func (m *GameMoveRight) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameMoveRight.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameMoveRight proto.InternalMessageInfo
+
+type GameMoveRightUp struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameMoveRightUp) Reset()         { *m = GameMoveRightUp{} }
+func (m *GameMoveRightUp) String() string { return proto.CompactTextString(m) }
+func (*GameMoveRightUp) ProtoMessage()    {}
+func (*GameMoveRightUp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{16}
+}
+
+func (m *GameMoveRightUp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameMoveRightUp.Unmarshal(m, b)
+}
+func (m *GameMoveRightUp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameMoveRightUp.Marshal(b, m, deterministic)
+}
+func (m *GameMoveRightUp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameMoveRightUp.Merge(m, src)
+}
+func (m *GameMoveRightUp) XXX_Size() int {
+	return xxx_messageInfo_GameMoveRightUp.Size(m)
+}
+func (m *GameMoveRightUp) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameMoveRightUp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameMoveRightUp proto.InternalMessageInfo
+
+type GameMoveRightDown struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameMoveRightDown) Reset()         { *m = GameMoveRightDown{} }
+func (m *GameMoveRightDown) String() string { return proto.CompactTextString(m) }
+func (*GameMoveRightDown) ProtoMessage()    {}
+func (*GameMoveRightDown) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{17}
+}
+
+func (m *GameMoveRightDown) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameMoveRightDown.Unmarshal(m, b)
+}
+func (m *GameMoveRightDown) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameMoveRightDown.Marshal(b, m, deterministic)
+}
+func (m *GameMoveRightDown) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameMoveRightDown.Merge(m, src)
+}
+func (m *GameMoveRightDown) XXX_Size() int {
+	return xxx_messageInfo_GameMoveRightDown.Size(m)
+}
+func (m *GameMoveRightDown) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameMoveRightDown.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameMoveRightDown proto.InternalMessageInfo
+
+type GameMoveUp struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameMoveUp) Reset()         { *m = GameMoveUp{} }
+func (m *GameMoveUp) String() string { return proto.CompactTextString(m) }
+func (*GameMoveUp) ProtoMessage()    {}
+func (*GameMoveUp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{18}
+}
+
+func (m *GameMoveUp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameMoveUp.Unmarshal(m, b)
+}
+func (m *GameMoveUp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameMoveUp.Marshal(b, m, deterministic)
+}
+func (m *GameMoveUp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameMoveUp.Merge(m, src)
+}
+func (m *GameMoveUp) XXX_Size() int {
+	return xxx_messageInfo_GameMoveUp.Size(m)
+}
+func (m *GameMoveUp) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameMoveUp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameMoveUp proto.InternalMessageInfo
+
+type GameMoveUpLeft struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameMoveUpLeft) Reset()         { *m = GameMoveUpLeft{} }
+func (m *GameMoveUpLeft) String() string { return proto.CompactTextString(m) }
+func (*GameMoveUpLeft) ProtoMessage()    {}
+func (*GameMoveUpLeft) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{19}
+}
+
+func (m *GameMoveUpLeft) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameMoveUpLeft.Unmarshal(m, b)
+}
+func (m *GameMoveUpLeft) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameMoveUpLeft.Marshal(b, m, deterministic)
+}
+func (m *GameMoveUpLeft) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameMoveUpLeft.Merge(m, src)
+}
+func (m *GameMoveUpLeft) XXX_Size() int {
+	return xxx_messageInfo_GameMoveUpLeft.Size(m)
+}
+func (m *GameMoveUpLeft) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameMoveUpLeft.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameMoveUpLeft proto.InternalMessageInfo
+
+type GameMoveUpRight struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameMoveUpRight) Reset()         { *m = GameMoveUpRight{} }
+func (m *GameMoveUpRight) String() string { return proto.CompactTextString(m) }
+func (*GameMoveUpRight) ProtoMessage()    {}
+func (*GameMoveUpRight) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{20}
+}
+
+func (m *GameMoveUpRight) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameMoveUpRight.Unmarshal(m, b)
+}
+func (m *GameMoveUpRight) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameMoveUpRight.Marshal(b, m, deterministic)
+}
+func (m *GameMoveUpRight) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameMoveUpRight.Merge(m, src)
+}
+func (m *GameMoveUpRight) XXX_Size() int {
+	return xxx_messageInfo_GameMoveUpRight.Size(m)
+}
+func (m *GameMoveUpRight) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameMoveUpRight.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameMoveUpRight proto.InternalMessageInfo
+
+type GameMoveDown struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameMoveDown) Reset()         { *m = GameMoveDown{} }
+func (m *GameMoveDown) String() string { return proto.CompactTextString(m) }
+func (*GameMoveDown) ProtoMessage()    {}
+func (*GameMoveDown) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{21}
+}
+
+func (m *GameMoveDown) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameMoveDown.Unmarshal(m, b)
+}
+func (m *GameMoveDown) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameMoveDown.Marshal(b, m, deterministic)
+}
+func (m *GameMoveDown) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameMoveDown.Merge(m, src)
+}
+func (m *GameMoveDown) XXX_Size() int {
+	return xxx_messageInfo_GameMoveDown.Size(m)
+}
+func (m *GameMoveDown) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameMoveDown.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameMoveDown proto.InternalMessageInfo
+
+type GameMoveDownLeft struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameMoveDownLeft) Reset()         { *m = GameMoveDownLeft{} }
+func (m *GameMoveDownLeft) String() string { return proto.CompactTextString(m) }
+func (*GameMoveDownLeft) ProtoMessage()    {}
+func (*GameMoveDownLeft) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{22}
+}
+
+func (m *GameMoveDownLeft) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameMoveDownLeft.Unmarshal(m, b)
+}
+func (m *GameMoveDownLeft) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameMoveDownLeft.Marshal(b, m, deterministic)
+}
+func (m *GameMoveDownLeft) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameMoveDownLeft.Merge(m, src)
+}
+func (m *GameMoveDownLeft) XXX_Size() int {
+	return xxx_messageInfo_GameMoveDownLeft.Size(m)
+}
+func (m *GameMoveDownLeft) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameMoveDownLeft.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameMoveDownLeft proto.InternalMessageInfo
+
+type GameMoveDownRight struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameMoveDownRight) Reset()         { *m = GameMoveDownRight{} }
+func (m *GameMoveDownRight) String() string { return proto.CompactTextString(m) }
+func (*GameMoveDownRight) ProtoMessage()    {}
+func (*GameMoveDownRight) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{23}
+}
+
+func (m *GameMoveDownRight) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameMoveDownRight.Unmarshal(m, b)
+}
+func (m *GameMoveDownRight) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameMoveDownRight.Marshal(b, m, deterministic)
+}
+func (m *GameMoveDownRight) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameMoveDownRight.Merge(m, src)
+}
+func (m *GameMoveDownRight) XXX_Size() int {
+	return xxx_messageInfo_GameMoveDownRight.Size(m)
+}
+func (m *GameMoveDownRight) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameMoveDownRight.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameMoveDownRight proto.InternalMessageInfo
+
+type GameShoot struct {
+	TargetX              float32  `protobuf:"fixed32,1,opt,name=target_x,json=targetX,proto3" json:"target_x,omitempty"`
+	TargetY              float32  `protobuf:"fixed32,2,opt,name=target_y,json=targetY,proto3" json:"target_y,omitempty"`
+	TargetZ              float32  `protobuf:"fixed32,3,opt,name=target_z,json=targetZ,proto3" json:"target_z,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameShoot) Reset()         { *m = GameShoot{} }
+func (m *GameShoot) String() string { return proto.CompactTextString(m) }
+func (*GameShoot) ProtoMessage()    {}
+func (*GameShoot) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{24}
+}
+
+func (m *GameShoot) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameShoot.Unmarshal(m, b)
+}
+func (m *GameShoot) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameShoot.Marshal(b, m, deterministic)
+}
+func (m *GameShoot) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameShoot.Merge(m, src)
+}
+func (m *GameShoot) XXX_Size() int {
+	return xxx_messageInfo_GameShoot.Size(m)
+}
+func (m *GameShoot) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameShoot.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameShoot proto.InternalMessageInfo
+
+func (m *GameShoot) GetTargetX() float32 {
+	if m != nil {
+		return m.TargetX
+	}
+	return 0
+}
+
+func (m *GameShoot) GetTargetY() float32 {
+	if m != nil {
+		return m.TargetY
+	}
+	return 0
+}
+
+func (m *GameShoot) GetTargetZ() float32 {
+	if m != nil {
+		return m.TargetZ
+	}
+	return 0
+}
+
+type GameReload struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameReload) Reset()         { *m = GameReload{} }
+func (m *GameReload) String() string { return proto.CompactTextString(m) }
+func (*GameReload) ProtoMessage()    {}
+func (*GameReload) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{25}
+}
+
+func (m *GameReload) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameReload.Unmarshal(m, b)
+}
+func (m *GameReload) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameReload.Marshal(b, m, deterministic)
+}
+func (m *GameReload) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameReload.Merge(m, src)
+}
+func (m *GameReload) XXX_Size() int {
+	return xxx_messageInfo_GameReload.Size(m)
+}
+func (m *GameReload) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameReload.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameReload proto.InternalMessageInfo
+
+type GamePickupWeapon struct {
+	WeaponId             int32    `protobuf:"varint,1,opt,name=weapon_id,json=weaponId,proto3" json:"weapon_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GamePickupWeapon) Reset()         { *m = GamePickupWeapon{} }
+func (m *GamePickupWeapon) String() string { return proto.CompactTextString(m) }
+func (*GamePickupWeapon) ProtoMessage()    {}
+func (*GamePickupWeapon) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{26}
+}
+
+func (m *GamePickupWeapon) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GamePickupWeapon.Unmarshal(m, b)
+}
+func (m *GamePickupWeapon) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GamePickupWeapon.Marshal(b, m, deterministic)
+}
+func (m *GamePickupWeapon) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GamePickupWeapon.Merge(m, src)
+}
+func (m *GamePickupWeapon) XXX_Size() int {
+	return xxx_messageInfo_GamePickupWeapon.Size(m)
+}
+func (m *GamePickupWeapon) XXX_DiscardUnknown() {
+	xxx_messageInfo_GamePickupWeapon.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GamePickupWeapon proto.InternalMessageInfo
+
+func (m *GamePickupWeapon) GetWeaponId() int32 {
+	if m != nil {
+		return m.WeaponId
+	}
+	return 0
+}
+
+type GameCrouch struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameCrouch) Reset()         { *m = GameCrouch{} }
+func (m *GameCrouch) String() string { return proto.CompactTextString(m) }
+func (*GameCrouch) ProtoMessage()    {}
+func (*GameCrouch) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{27}
+}
+
+func (m *GameCrouch) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameCrouch.Unmarshal(m, b)
+}
+func (m *GameCrouch) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameCrouch.Marshal(b, m, deterministic)
+}
+func (m *GameCrouch) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameCrouch.Merge(m, src)
+}
+func (m *GameCrouch) XXX_Size() int {
+	return xxx_messageInfo_GameCrouch.Size(m)
+}
+func (m *GameCrouch) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameCrouch.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameCrouch proto.InternalMessageInfo
+
+type GameJump struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameJump) Reset()         { *m = GameJump{} }
+func (m *GameJump) String() string { return proto.CompactTextString(m) }
+func (*GameJump) ProtoMessage()    {}
+func (*GameJump) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{28}
+}
+
+func (m *GameJump) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameJump.Unmarshal(m, b)
+}
+func (m *GameJump) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameJump.Marshal(b, m, deterministic)
+}
+func (m *GameJump) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameJump.Merge(m, src)
+}
+func (m *GameJump) XXX_Size() int {
+	return xxx_messageInfo_GameJump.Size(m)
+}
+func (m *GameJump) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameJump.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameJump proto.InternalMessageInfo
+
+type GamePing struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GamePing) Reset()         { *m = GamePing{} }
+func (m *GamePing) String() string { return proto.CompactTextString(m) }
+func (*GamePing) ProtoMessage()    {}
+func (*GamePing) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{29}
+}
+
+func (m *GamePing) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GamePing.Unmarshal(m, b)
+}
+func (m *GamePing) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GamePing.Marshal(b, m, deterministic)
+}
+func (m *GamePing) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GamePing.Merge(m, src)
+}
+func (m *GamePing) XXX_Size() int {
+	return xxx_messageInfo_GamePing.Size(m)
+}
+func (m *GamePing) XXX_DiscardUnknown() {
+	xxx_messageInfo_GamePing.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GamePing proto.InternalMessageInfo
+
+type GameOrientation struct {
+	X                    float32  `protobuf:"fixed32,1,opt,name=x,proto3" json:"x,omitempty"`
+	Y                    float32  `protobuf:"fixed32,2,opt,name=y,proto3" json:"y,omitempty"`
+	Z                    float32  `protobuf:"fixed32,3,opt,name=z,proto3" json:"z,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GameOrientation) Reset()         { *m = GameOrientation{} }
+func (m *GameOrientation) String() string { return proto.CompactTextString(m) }
+func (*GameOrientation) ProtoMessage()    {}
+func (*GameOrientation) Descriptor() ([]byte, []int) {
+	return fileDescriptor_38fc58335341d769, []int{30}
+}
+
+func (m *GameOrientation) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GameOrientation.Unmarshal(m, b)
+}
+func (m *GameOrientation) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GameOrientation.Marshal(b, m, deterministic)
+}
+func (m *GameOrientation) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GameOrientation.Merge(m, src)
+}
+func (m *GameOrientation) XXX_Size() int {
+	return xxx_messageInfo_GameOrientation.Size(m)
+}
+func (m *GameOrientation) XXX_DiscardUnknown() {
+	xxx_messageInfo_GameOrientation.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GameOrientation proto.InternalMessageInfo
+
+func (m *GameOrientation) GetX() float32 {
+	if m != nil {
+		return m.X
+	}
+	return 0
+}
+
+func (m *GameOrientation) GetY() float32 {
+	if m != nil {
+		return m.Y
+	}
+	return 0
+}
+
+func (m *GameOrientation) GetZ() float32 {
+	if m != nil {
+		return m.Z
+	}
+	return 0
+}
+
 func init() {
 	proto.RegisterType((*GameClientData)(nil), "pb.GameClientData")
 	proto.RegisterType((*GameServerData)(nil), "pb.GameServerData")
@@ -633,50 +1712,108 @@ func init() {
 	proto.RegisterType((*GameInputRequest)(nil), "pb.GameInputRequest")
 	proto.RegisterType((*GameStateResponse)(nil), "pb.GameStateResponse")
 	proto.RegisterType((*GamePlayerData)(nil), "pb.GamePlayerData")
+	proto.RegisterType((*GamePrimaryWeapon)(nil), "pb.GamePrimaryWeapon")
+	proto.RegisterType((*GameSecondaryWeapon)(nil), "pb.GameSecondaryWeapon")
+	proto.RegisterType((*GameKnifeWeapon)(nil), "pb.GameKnifeWeapon")
+	proto.RegisterType((*GameMoveLeft)(nil), "pb.GameMoveLeft")
+	proto.RegisterType((*GameMoveLeftUp)(nil), "pb.GameMoveLeftUp")
+	proto.RegisterType((*GameMoveLeftDown)(nil), "pb.GameMoveLeftDown")
+	proto.RegisterType((*GameMoveRight)(nil), "pb.GameMoveRight")
+	proto.RegisterType((*GameMoveRightUp)(nil), "pb.GameMoveRightUp")
+	proto.RegisterType((*GameMoveRightDown)(nil), "pb.GameMoveRightDown")
+	proto.RegisterType((*GameMoveUp)(nil), "pb.GameMoveUp")
+	proto.RegisterType((*GameMoveUpLeft)(nil), "pb.GameMoveUpLeft")
+	proto.RegisterType((*GameMoveUpRight)(nil), "pb.GameMoveUpRight")
+	proto.RegisterType((*GameMoveDown)(nil), "pb.GameMoveDown")
+	proto.RegisterType((*GameMoveDownLeft)(nil), "pb.GameMoveDownLeft")
+	proto.RegisterType((*GameMoveDownRight)(nil), "pb.GameMoveDownRight")
+	proto.RegisterType((*GameShoot)(nil), "pb.GameShoot")
+	proto.RegisterType((*GameReload)(nil), "pb.GameReload")
+	proto.RegisterType((*GamePickupWeapon)(nil), "pb.GamePickupWeapon")
+	proto.RegisterType((*GameCrouch)(nil), "pb.GameCrouch")
+	proto.RegisterType((*GameJump)(nil), "pb.GameJump")
+	proto.RegisterType((*GamePing)(nil), "pb.GamePing")
+	proto.RegisterType((*GameOrientation)(nil), "pb.GameOrientation")
 }
 
 func init() { proto.RegisterFile("game.proto", fileDescriptor_38fc58335341d769) }
 
 var fileDescriptor_38fc58335341d769 = []byte{
-	// 595 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x94, 0x5d, 0x4f, 0xdb, 0x3c,
-	0x14, 0xc7, 0x9f, 0xb6, 0x69, 0x9b, 0x1e, 0xa0, 0xf0, 0x18, 0xa6, 0x59, 0x6c, 0xd2, 0x58, 0xa6,
-	0x0d, 0x86, 0x80, 0x4d, 0x4c, 0xbb, 0xdc, 0x05, 0x2f, 0xd2, 0x86, 0xb8, 0x41, 0xe1, 0x62, 0xc0,
-	0x4d, 0xe4, 0x36, 0x47, 0x5b, 0x44, 0x1b, 0x9b, 0xd8, 0x19, 0x84, 0x6f, 0x32, 0x69, 0x1f, 0x71,
-	0x1f, 0x62, 0xf2, 0x31, 0x79, 0xa1, 0xd5, 0x2e, 0x76, 0x57, 0xff, 0xfc, 0xab, 0xfd, 0xb7, 0xcf,
-	0x89, 0x01, 0xbe, 0x89, 0x29, 0xee, 0xa9, 0x4c, 0x1a, 0xc9, 0xda, 0x6a, 0x14, 0xfc, 0x6c, 0xc1,
-	0xf0, 0xb3, 0x98, 0xe2, 0xd1, 0x24, 0xc1, 0xd4, 0x1c, 0x0b, 0x23, 0xd8, 0x5b, 0xf0, 0x92, 0x34,
-	0x31, 0xbc, 0xb5, 0xd1, 0xda, 0x5a, 0xd8, 0x5f, 0xdd, 0x53, 0xa3, 0x3d, 0x6b, 0x9c, 0xa4, 0x89,
-	0x09, 0xf1, 0x26, 0x47, 0x6d, 0xbe, 0xfc, 0x17, 0x92, 0xc2, 0xde, 0x40, 0x67, 0x94, 0x17, 0xbc,
-	0x4d, 0x26, 0x2b, 0xcd, 0xc3, 0xbc, 0xa8, 0x45, 0x2b, 0xb0, 0x1d, 0xe8, 0x26, 0xa9, 0xca, 0x0d,
-	0xef, 0x90, 0xb9, 0x56, 0xaf, 0xa9, 0xf2, 0xc6, 0xa2, 0x4e, 0x3a, 0xec, 0x81, 0x17, 0x0b, 0x23,
-	0x82, 0x5f, 0x0f, 0xd9, 0xce, 0x31, 0xfb, 0x81, 0x19, 0x65, 0xdb, 0x7e, 0x94, 0x6d, 0xed, 0x71,
-	0x36, 0xad, 0x64, 0xaa, 0xb1, 0x0a, 0xb7, 0xd9, 0x0c, 0xb7, 0xfa, 0x28, 0x5c, 0x65, 0x52, 0xba,
-	0x5d, 0xe8, 0x6a, 0x23, 0x0c, 0x3e, 0xa4, 0x7b, 0x52, 0xaa, 0xe7, 0x16, 0x36, 0x64, 0x67, 0x55,
-	0xf1, 0xb6, 0x61, 0x79, 0xe6, 0x5e, 0xd8, 0x53, 0xe8, 0xe7, 0x1a, 0xb3, 0x28, 0x89, 0x29, 0xa1,
-	0x17, 0xf6, 0xec, 0xf0, 0x24, 0x0e, 0x0e, 0x61, 0x65, 0x36, 0x27, 0xe3, 0xd0, 0xd7, 0xf9, 0x78,
-	0x8c, 0x5a, 0x93, 0xec, 0x87, 0xe5, 0x90, 0xad, 0x41, 0x17, 0xb3, 0x4c, 0x66, 0x94, 0x7d, 0x10,
-	0xba, 0x41, 0xb0, 0xeb, 0x6e, 0xa3, 0xbe, 0x5d, 0xf6, 0x0c, 0x06, 0xb7, 0x28, 0x94, 0x4c, 0xcb,
-	0x0d, 0xbb, 0xa1, 0xef, 0xc0, 0x49, 0x1c, 0x1c, 0xb8, 0x78, 0x8d, 0xf3, 0xfe, 0xf3, 0x8e, 0xef,
-	0xca, 0xd4, 0x75, 0x95, 0xec, 0x9e, 0x54, 0xa5, 0xe8, 0x1a, 0x0b, 0x5a, 0x65, 0x10, 0xfa, 0x04,
-	0x4e, 0xb1, 0x08, 0x0e, 0xe0, 0xff, 0xb9, 0x8b, 0x63, 0x3b, 0xd0, 0x57, 0x13, 0x51, 0x60, 0x66,
-	0x77, 0xed, 0x34, 0x1b, 0xe5, 0x8c, 0xb0, 0x2d, 0x6c, 0x58, 0x2a, 0xc1, 0xef, 0x8e, 0x3b, 0x66,
-	0x3d, 0xf7, 0xd7, 0x5b, 0x65, 0xeb, 0xe0, 0x1b, 0x14, 0xd3, 0xa9, 0xad, 0x5d, 0x9b, 0x0e, 0x54,
-	0x8d, 0x6d, 0xce, 0xeb, 0x54, 0xde, 0xa6, 0x91, 0x92, 0x9a, 0x0a, 0xeb, 0x87, 0x3e, 0x81, 0x33,
-	0xa9, 0xd9, 0x2a, 0x74, 0x95, 0xd4, 0xd1, 0x1d, 0xf7, 0x36, 0x5a, 0x5b, 0xed, 0xd0, 0x53, 0x52,
-	0x5f, 0x94, 0xb0, 0xe0, 0xdd, 0x0a, 0x5e, 0x96, 0xf0, 0x9e, 0xf7, 0x2a, 0x78, 0xc5, 0x5e, 0xc1,
-	0x92, 0xcc, 0xec, 0xf7, 0x22, 0x4c, 0x22, 0xd3, 0xe8, 0x8e, 0xf7, 0x69, 0x72, 0xb1, 0x01, 0x2f,
-	0x66, 0xa5, 0x82, 0xfb, 0x73, 0xd2, 0xe5, 0xac, 0x74, 0xcf, 0x07, 0x73, 0xd2, 0x15, 0x63, 0xe0,
-	0xc5, 0x28, 0x62, 0x0e, 0x74, 0x0a, 0xfa, 0xcd, 0x9e, 0xc3, 0x60, 0x2c, 0xd3, 0x14, 0xc7, 0x06,
-	0x63, 0xbe, 0x40, 0x13, 0x35, 0x60, 0x9b, 0xb0, 0x8c, 0x37, 0x79, 0xa2, 0x14, 0xc6, 0x91, 0x6b,
-	0x08, 0xbe, 0x48, 0xed, 0x31, 0x2c, 0xf1, 0x57, 0xa2, 0xec, 0x05, 0x2c, 0xe8, 0xb1, 0xcc, 0x30,
-	0xba, 0x4e, 0x26, 0x13, 0xcd, 0x97, 0x48, 0x02, 0x42, 0xa7, 0x96, 0xb0, 0x97, 0xb0, 0xe8, 0x84,
-	0x18, 0x85, 0xf9, 0xae, 0xf9, 0x90, 0x0c, 0xf7, 0xa7, 0x63, 0x42, 0xec, 0x35, 0x0c, 0x9d, 0x22,
-	0xb4, 0x4e, 0xb4, 0x36, 0x9a, 0x2f, 0x93, 0xb4, 0x44, 0xf4, 0xe0, 0x01, 0xda, 0x16, 0x9b, 0xca,
-	0x14, 0x0b, 0xbe, 0x42, 0xb3, 0x6e, 0xb0, 0xff, 0x09, 0x3c, 0x5b, 0x6d, 0xf6, 0x11, 0xfa, 0x47,
-	0x2e, 0x3e, 0xab, 0xda, 0xa3, 0x7e, 0x93, 0xd6, 0x2b, 0x56, 0xbf, 0x05, 0x5b, 0xad, 0xf7, 0xad,
-	0x51, 0x8f, 0x5e, 0xb2, 0x0f, 0x7f, 0x02, 0x00, 0x00, 0xff, 0xff, 0x04, 0x10, 0x64, 0x4f, 0xd7,
-	0x04, 0x00, 0x00,
+	// 1174 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x56, 0xf9, 0x6e, 0xe4, 0xc4,
+	0x13, 0xce, 0x1c, 0x9e, 0xa3, 0xc6, 0x33, 0x93, 0xf4, 0x64, 0x7f, 0xeb, 0xdf, 0x82, 0x04, 0x18,
+	0x2d, 0x7b, 0x68, 0x0f, 0x14, 0xc4, 0xa5, 0xe5, 0x50, 0x0e, 0x89, 0x84, 0x05, 0x11, 0x79, 0x15,
+	0x91, 0x44, 0x48, 0x23, 0x67, 0xdc, 0x49, 0xcc, 0x8c, 0xdd, 0xbd, 0x6e, 0x3b, 0xc9, 0xe4, 0x4d,
+	0x90, 0x78, 0x0f, 0x5e, 0x8a, 0x87, 0x40, 0x5d, 0xed, 0x6e, 0xb7, 0x33, 0x80, 0xc4, 0x7f, 0xae,
+	0xaa, 0xaf, 0xba, 0xbf, 0xae, 0xea, 0xfa, 0xda, 0x00, 0x17, 0x61, 0x42, 0x5f, 0xf0, 0x8c, 0xe5,
+	0x8c, 0x34, 0xf9, 0x99, 0xff, 0x5b, 0x03, 0x46, 0xdf, 0x85, 0x09, 0xdd, 0x5d, 0xc4, 0x34, 0xcd,
+	0xf7, 0xc2, 0x3c, 0x24, 0x4f, 0xa0, 0x1d, 0xa7, 0x71, 0xee, 0x35, 0xde, 0x6f, 0x3c, 0x1e, 0x6c,
+	0x4d, 0x5e, 0xf0, 0xb3, 0x17, 0x12, 0x71, 0x90, 0xc6, 0x79, 0x40, 0xdf, 0x16, 0x54, 0xe4, 0xfb,
+	0x6b, 0x01, 0x42, 0xc8, 0x47, 0xd0, 0x3a, 0x2b, 0x96, 0x5e, 0x13, 0x91, 0x44, 0x23, 0x77, 0x8a,
+	0x65, 0x05, 0x94, 0x00, 0xf2, 0x0c, 0x9c, 0x38, 0xe5, 0x45, 0xee, 0xb5, 0x10, 0xb9, 0x59, 0xad,
+	0xc9, 0x0b, 0x6b, 0x51, 0x05, 0xda, 0xe9, 0x40, 0x3b, 0x0a, 0xf3, 0xd0, 0xff, 0xbd, 0xe4, 0xf6,
+	0x86, 0x66, 0x57, 0x34, 0x43, 0x6e, 0x4f, 0x6b, 0xdc, 0x36, 0xeb, 0xdc, 0x04, 0x67, 0xa9, 0xa0,
+	0x86, 0xdc, 0x23, 0x9b, 0xdc, 0xa4, 0x46, 0xce, 0x20, 0x91, 0xdd, 0x73, 0x70, 0x44, 0x1e, 0xe6,
+	0xb4, 0x64, 0x77, 0x4f, 0x43, 0xdf, 0x48, 0xa7, 0x05, 0x56, 0x28, 0x43, 0xef, 0x29, 0x8c, 0xef,
+	0xd4, 0x85, 0xdc, 0x87, 0x6e, 0x21, 0x68, 0x36, 0x8d, 0x23, 0x64, 0xd8, 0x0e, 0x3a, 0xd2, 0x3c,
+	0x88, 0xfc, 0x1d, 0x58, 0xbf, 0xcb, 0x93, 0x78, 0xd0, 0x15, 0xc5, 0x6c, 0x46, 0x85, 0x40, 0x70,
+	0x2f, 0xd0, 0x26, 0xd9, 0x04, 0x87, 0x66, 0x19, 0xcb, 0x90, 0x7b, 0x3f, 0x50, 0x86, 0xff, 0x5c,
+	0x55, 0xa3, 0xaa, 0x2e, 0x79, 0x07, 0xfa, 0xd7, 0x34, 0xe4, 0x2c, 0xd5, 0x1b, 0x3a, 0x41, 0x4f,
+	0x39, 0x0e, 0x22, 0x7f, 0x5b, 0xd1, 0xb3, 0xce, 0xfb, 0x9f, 0x77, 0xfc, 0xa3, 0xaf, 0x69, 0x57,
+	0x6d, 0x22, 0xdf, 0xc0, 0x88, 0x67, 0x71, 0x12, 0x66, 0xcb, 0xa9, 0xda, 0xab, 0x6c, 0x86, 0x29,
+	0xdb, 0xa1, 0x8a, 0xfe, 0x8c, 0xc1, 0xfd, 0xb5, 0x60, 0xc8, 0x6d, 0x07, 0xd9, 0x83, 0x75, 0x41,
+	0x67, 0x2c, 0x8d, 0xac, 0x15, 0x54, 0x8f, 0xee, 0x9b, 0xc2, 0xeb, 0xb8, 0x59, 0x63, 0x2c, 0xea,
+	0x2e, 0xf2, 0x05, 0xb8, 0xf3, 0x34, 0x3e, 0xa7, 0x7a, 0x85, 0x56, 0xbd, 0xcb, 0xaf, 0x65, 0xcc,
+	0x64, 0x0f, 0xe6, 0x95, 0x49, 0x5e, 0x42, 0x3f, 0x61, 0x57, 0x74, 0xba, 0xa0, 0xe7, 0xb9, 0xd7,
+	0xc6, 0xb4, 0x75, 0x9d, 0xf6, 0x23, 0xbb, 0xa2, 0x3f, 0xd0, 0x73, 0x79, 0x17, 0x7b, 0x49, 0xf9,
+	0x4d, 0x3e, 0x03, 0xd7, 0x24, 0x4c, 0x0b, 0xee, 0x39, 0xf5, 0xdb, 0xae, 0x73, 0x8e, 0xf8, 0xfe,
+	0x5a, 0x00, 0x89, 0xb1, 0xc8, 0x57, 0x30, 0xaa, 0xf2, 0x22, 0x76, 0x9d, 0x7a, 0x9d, 0xfa, 0xad,
+	0xd5, 0x99, 0x7b, 0xec, 0x5a, 0xb2, 0x74, 0x13, 0xcb, 0x26, 0x5b, 0x80, 0x6b, 0x4d, 0xb3, 0xf8,
+	0xe2, 0x32, 0xf7, 0xba, 0x98, 0xb9, 0x61, 0x67, 0x06, 0x32, 0xb0, 0xbf, 0x16, 0xe0, 0x69, 0xd0,
+	0x20, 0x5f, 0xc2, 0xb0, 0xca, 0x91, 0x54, 0x7b, 0xf5, 0xaa, 0x98, 0x34, 0xe4, 0x3a, 0x48, 0x2a,
+	0x93, 0x7c, 0x0b, 0x63, 0x2b, 0x15, 0xd9, 0xf6, 0xeb, 0x6d, 0x35, 0xc9, 0x25, 0xdd, 0x61, 0x62,
+	0x3b, 0xc8, 0x13, 0xe8, 0xe2, 0x02, 0x05, 0xf7, 0x00, 0x13, 0x47, 0x76, 0x22, 0x6e, 0xd8, 0x49,
+	0xf0, 0xcb, 0x14, 0xb4, 0xe0, 0xaa, 0x09, 0x83, 0xd5, 0x82, 0x1e, 0xf1, 0xb2, 0x0d, 0x90, 0x18,
+	0xcb, 0x1c, 0xaf, 0xe0, 0x65, 0x55, 0xdc, 0xd5, 0xe3, 0x1d, 0x71, 0x5d, 0x97, 0x41, 0x52, 0x99,
+	0xa6, 0xe9, 0x78, 0xb0, 0xe1, 0x6a, 0xd3, 0xcb, 0x33, 0x61, 0xd3, 0xf1, 0x38, 0xba, 0x79, 0x32,
+	0x41, 0xb1, 0x1c, 0xad, 0x36, 0x4f, 0x22, 0x4b, 0x9e, 0x6e, 0x62, 0xd9, 0xa6, 0x9a, 0x98, 0xad,
+	0xb8, 0x8e, 0x57, 0xab, 0x29, 0xe1, 0x9a, 0xed, 0x30, 0xb1, 0x1d, 0xe4, 0x21, 0x38, 0xe2, 0x92,
+	0xb1, 0xdc, 0x5b, 0xc7, 0xb4, 0xa1, 0x99, 0x0c, 0xe9, 0x44, 0x29, 0x92, 0x1f, 0xe4, 0x31, 0x74,
+	0x32, 0xba, 0x60, 0x61, 0xe4, 0x6d, 0xd4, 0x6b, 0x1e, 0xa0, 0x57, 0xd6, 0x5c, 0xc5, 0xc9, 0x2b,
+	0x18, 0xf2, 0x78, 0x36, 0x2f, 0xb8, 0x1e, 0x18, 0x52, 0x3f, 0xce, 0x21, 0x06, 0xcd, 0xc4, 0xb8,
+	0xdc, 0xb2, 0xe5, 0x36, 0xb3, 0x8c, 0x15, 0xb3, 0x4b, 0x6f, 0x52, 0xdf, 0x66, 0x17, 0xbd, 0x72,
+	0x1b, 0x15, 0x27, 0x3e, 0xb4, 0x7f, 0x2d, 0x12, 0xee, 0x6d, 0x22, 0xce, 0xd5, 0xb8, 0xef, 0x8b,
+	0x44, 0x5e, 0x00, 0x8c, 0x49, 0x0c, 0x8f, 0xd3, 0x0b, 0xef, 0x5e, 0x1d, 0x73, 0x18, 0xa7, 0x17,
+	0x12, 0x23, 0x63, 0xe4, 0x73, 0x18, 0xb0, 0x4c, 0xbe, 0x48, 0x61, 0x1e, 0xb3, 0xd4, 0xfb, 0x5f,
+	0xbd, 0xd1, 0x3f, 0x55, 0x21, 0xd9, 0x68, 0x0b, 0xb9, 0xe3, 0x40, 0x6b, 0x4e, 0x97, 0xfe, 0x36,
+	0x6c, 0xac, 0x28, 0x38, 0x79, 0x06, 0x5d, 0xbe, 0x08, 0x97, 0x34, 0x93, 0xf2, 0xd7, 0xb2, 0xaf,
+	0xdc, 0x21, 0xba, 0xe5, 0x0b, 0x13, 0x68, 0x88, 0xff, 0x67, 0x4b, 0xe9, 0x6d, 0x15, 0xfb, 0x47,
+	0x79, 0x27, 0x0f, 0xa0, 0x97, 0xd3, 0x30, 0x49, 0xe4, 0x23, 0xd2, 0x44, 0x65, 0x35, 0xb6, 0x14,
+	0xe9, 0x79, 0x2a, 0xef, 0x01, 0x67, 0x02, 0x65, 0xaa, 0x17, 0xf4, 0xd0, 0x71, 0xc8, 0x04, 0x99,
+	0x80, 0xc3, 0x99, 0x98, 0xde, 0xa0, 0x10, 0x35, 0x83, 0x36, 0x67, 0xe2, 0x58, 0x3b, 0x97, 0xa8,
+	0x34, 0xca, 0x79, 0xa2, 0x9d, 0xb7, 0x28, 0x22, 0xca, 0x79, 0x4a, 0x3e, 0x84, 0xa1, 0x75, 0xf8,
+	0xe9, 0x0d, 0xea, 0x44, 0x33, 0x70, 0x2d, 0xe7, 0xf1, 0x5d, 0xd0, 0x12, 0x55, 0xa1, 0x0e, 0x3a,
+	0xb9, 0x0b, 0xba, 0xc5, 0xe9, 0xaf, 0x83, 0x4e, 0x09, 0x81, 0x76, 0x44, 0xc3, 0x08, 0x07, 0xbc,
+	0x17, 0xe0, 0x37, 0x79, 0x17, 0xfa, 0x33, 0x96, 0xa6, 0x74, 0x96, 0xd3, 0x08, 0x27, 0xb9, 0x17,
+	0x54, 0x0e, 0xf2, 0x08, 0xc6, 0xf4, 0x6d, 0x11, 0x73, 0x4e, 0x23, 0x7d, 0xf1, 0x5c, 0x7c, 0xa7,
+	0x46, 0xda, 0x5d, 0x5e, 0xb1, 0xf7, 0x60, 0x20, 0x66, 0x2c, 0xa3, 0xd3, 0x79, 0xbc, 0x58, 0x08,
+	0x1c, 0x51, 0x27, 0x00, 0x74, 0xbd, 0x96, 0x1e, 0xf2, 0x01, 0xb8, 0x0a, 0x10, 0xd1, 0x30, 0xbf,
+	0x14, 0x38, 0x8e, 0x4e, 0xa0, 0x92, 0xf6, 0xd0, 0x45, 0x1e, 0xc2, 0x48, 0x41, 0x42, 0x21, 0x62,
+	0x21, 0x72, 0x81, 0x43, 0xe7, 0x04, 0x43, 0xf4, 0x6e, 0x97, 0x4e, 0xf9, 0xd6, 0x25, 0x2c, 0xa5,
+	0x4b, 0x9c, 0x2d, 0x27, 0x50, 0x86, 0x3f, 0x51, 0x37, 0xa6, 0xf6, 0x78, 0xf9, 0xf7, 0x60, 0xf2,
+	0x37, 0xef, 0x91, 0xbf, 0xa1, 0x9e, 0x56, 0xeb, 0x91, 0xf1, 0x47, 0xe0, 0xda, 0x92, 0xee, 0xaf,
+	0xab, 0xcb, 0x53, 0x3d, 0x0e, 0x3e, 0x51, 0x6f, 0xa9, 0x2d, 0xfa, 0xfe, 0x18, 0x86, 0x35, 0x69,
+	0xd5, 0x2b, 0x5b, 0x42, 0xad, 0x89, 0xd5, 0xe4, 0xd7, 0x77, 0x01, 0x2a, 0xc5, 0xb3, 0x37, 0x53,
+	0x52, 0x69, 0xaf, 0x53, 0x4a, 0xa0, 0xcd, 0x10, 0x97, 0xb0, 0xf8, 0x68, 0xdd, 0xb2, 0xf7, 0x32,
+	0x5a, 0xe4, 0xff, 0x02, 0x7d, 0x23, 0x3d, 0xe4, 0xff, 0xd0, 0xcb, 0xc3, 0xec, 0x82, 0xe6, 0xd3,
+	0x1b, 0x9c, 0x81, 0x66, 0xd0, 0x55, 0xf6, 0xb1, 0x15, 0x52, 0x3f, 0x5d, 0x26, 0x74, 0x62, 0x85,
+	0x6e, 0x71, 0x04, 0x4c, 0xe8, 0x54, 0x9f, 0x44, 0x09, 0x96, 0xff, 0x52, 0x91, 0xb2, 0xd5, 0xe8,
+	0xdf, 0xff, 0x72, 0xca, 0x74, 0x25, 0x44, 0x3e, 0x40, 0x4f, 0xcb, 0x8d, 0xfe, 0x96, 0xb2, 0xe2,
+	0xbf, 0x52, 0xe5, 0xb0, 0x74, 0x83, 0xb8, 0xd0, 0xd0, 0x27, 0x68, 0xdc, 0x48, 0x4b, 0x93, 0x6e,
+	0x2c, 0xa5, 0xa5, 0x79, 0x36, 0x6e, 0xb7, 0xbe, 0x86, 0xb6, 0x4c, 0x26, 0x9f, 0x42, 0x77, 0x57,
+	0x5d, 0x6c, 0x62, 0x84, 0xa3, 0xfa, 0x6d, 0x7e, 0x40, 0xaa, 0xbf, 0x17, 0xfd, 0xbb, 0xfa, 0xb8,
+	0xf1, 0x71, 0xe3, 0xac, 0x83, 0x3f, 0xdb, 0x9f, 0xfc, 0x15, 0x00, 0x00, 0xff, 0xff, 0x25, 0xeb,
+	0x24, 0x6e, 0x7a, 0x0b, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.

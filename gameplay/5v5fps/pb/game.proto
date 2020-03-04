@@ -42,7 +42,30 @@ message GameBuyResponse {
 }
 
 message GameInputRequest {
-    string input_key = 1;
+    oneof key {
+        GamePrimaryWeapon primary_weapon = 1;
+        GameSecondaryWeapon secondary_weapon = 2;
+        GameKnifeWeapon knife_weapon = 3;
+        GameMoveLeft move_left = 4;
+        GameMoveLeftUp move_left_up = 5;
+        GameMoveLeftDown move_left_down = 6;
+        GameMoveRight move_right = 7;
+        GameMoveRightUp move_right_up = 8;
+        GameMoveRightDown move_right_down = 9;
+        GameMoveUp move_up = 10;
+        GameMoveUpLeft move_up_left = 11;
+        GameMoveUpRight move_up_right = 12;
+        GameMoveDown move_down = 13;
+        GameMoveDownLeft move_down_left = 14;
+        GameMoveDownRight move_down_right = 15;
+        GameShoot shoot = 16;
+        GameReload reload = 17;
+        GamePickupWeapon pickup_weapon = 18;
+        GameCrouch crouch = 19;
+        GameJump jump = 20;
+        GamePing ping = 21;
+        GameOrientation orientation = 22;
+    }
 }
 
 message GameStateResponse {
@@ -66,4 +89,58 @@ message GamePlayerData {
     int32 score_deaths = 14;
     int32 score_assissts = 15;
     int32 money = 16;
+}
+
+message GamePrimaryWeapon {}
+
+message GameSecondaryWeapon {}
+
+message GameKnifeWeapon {}
+
+message GameMoveLeft {}
+
+message GameMoveLeftUp {}
+
+message GameMoveLeftDown {}
+
+message GameMoveRight {}
+
+message GameMoveRightUp {}
+
+message GameMoveRightDown {}
+
+message GameMoveUp {}
+
+message GameMoveUpLeft {}
+
+message GameMoveUpRight {}
+
+message GameMoveDown {}
+
+message GameMoveDownLeft {}
+
+message GameMoveDownRight {}
+
+message GameShoot {
+    float target_x = 1;
+    float target_y = 2;
+    float target_z = 3;
+}
+
+message GameReload {}
+
+message GamePickupWeapon {
+    int32 weapon_id = 1;
+}
+
+message GameCrouch {}
+
+message GameJump {}
+
+message GamePing {}
+
+message GameOrientation {
+    float x = 1;
+    float y = 2;
+    float z = 3;
 }

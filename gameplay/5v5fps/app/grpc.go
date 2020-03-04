@@ -3,12 +3,15 @@ package app
 import (
 	"github.com/4726/game/gameplay/player"
 	"github.com/4726/game/gameplay/weapon"
+	"github.com/4726/game/gameplay/engine"
+	"github.com/4726/game/gameplay/util"
 )
 
 type gameServer struct {
 	players map[uint64]*player.Player
 	playersLock sync.Mutex
 	weapons []weapon.Weapon
+	en engine.Engine
 }
 
 func newGameServer(team1, team2 [5]uint64) *gameServer {
@@ -94,6 +97,7 @@ func (s *gameServer) Connect(stream pb.GameConnectServer) error {
 					return err
 				}
 			}
+			p.LastUpdate = time.now()
 			s.playersLock.Unlock()
 			continue
 		}
@@ -104,32 +108,54 @@ func (s *gameServer) Connect(stream pb.GameConnectServer) error {
 			p := s.players[userID]
 			key := inputReq.GetInputKey()
 
-			if key == "primary_weapon" {
+			if in := inputReq.GetPrimaryWeapon(); in != nil {
 				p.EquippedWeapon = p.PrimaryWeapon
-			}
-			if key == "secondary_weapon" {
+			} else if in := inputReq.GetSecondaryWeapon(); in != nil {
 				p.EquippedWeapon = p.SecondaryWeapon
-			}
-			if key == "knife_weapon" {
+			} else if in := inputReq.GetKnifeWeapon(); in != nil {
 				p.EquippedWeapon = p.KnifeWeapon
-			}
-			if key == "slow_walk" {
+			} else if in := inputReq.GetMoveLeft(); in != nil {
+				s.engine.MoveLeft(p.UserID)
+			} else if in := inputReq.GetMoveLeftUp(); in != nil {
+				s.engine.MoveLeftUp(p.UserID)
+			} else if in := inputReq.GetMoveLeftDown(); in != nil {
+				s.engine.MoveLeftDown(p.UserID)
+			} else if in := inputReq.GetMoveRight(); in != nil {
+				s.engine.MoveRight(p.UserID)
+			} else if in := inputReq.GetMoveRightUp(); in != nil {
+				s.engine.MoveRightUp(p.UserID)
+			} else if in := inputReq.GetMoveRightDown(); in != nil {
+				s.engine.MoveRightDown(p.UserID)
+			} else if in := inputReq.GetMoveUp(); in != nil {
+				s.engine.MoveUp(p.UserID)
+			} else if in := inputReq.GetMoveUpLeft(); in != nil {
+				s.engine.MoveUpLeft(p.UserID)
+			} else if in := inputReq.GetMoveUpRight(); in != nil {
+				s.engine.MoveUpRight(p.UserID)
+			} else if in := inputReq.GetMoveDown(); in != nil {
+				s.engine.MoveDown(p.UserID)
+			} else if in := inputReq.GetMoveDownLeft(); in != nil {
+				s.engine.MoveDownLeft(p.UserID)
+			} else if in := inputReq.GetMoveDownRight(); in != nil {
+				s.engine.MoveDownRight(p.UserID)
+			} else if in := inputReq.GetShoot(); in != nil {
+				s.engine.Shoot(p.UserID, util.Vector3{
+					in.GetTargetX(),
+					in.GetTargetY(),
+					in.GetTargetZ(),
+				})
+			} else if in := inputReq.GetReload(); in != nil {
+				p.EquippedWeapon.Ammo = p.EquippedWeapon.AmmoMax
+			} else if in := inputReq.GetPickupWeapon(); in != nil {
+				s.engine.PickupWeapon(p.UserID, in.GetWeaponId())
+			} else if in := inputReq.GetCrouch(); in != nil {
 
-			}
-			if key == "normal_walk" {
+			} else if in := inputReq.GetJump(); in != nil {
 
-			}
-			if key == "pickup_weapon" {
-				
-			}
-			if key == "crouch" {
-				
-			}
-			if key == "jump" {
-				
-			}
-			if key == "ping" {
-				
+			} else if in := inputReq.GetPing(); in != nil {
+
+			} else if in := inputReq.GetOrientation(); in != nil {
+
 			}
 
 			p.LastUpdate = time.now()

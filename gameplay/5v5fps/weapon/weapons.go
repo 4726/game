@@ -6,6 +6,8 @@ type Weapon struct {
 	Damage uint
 	Price uint
 	WT WeaponType
+	AmmoMax int
+	Ammo int
 }
 
 type WeaponType int
