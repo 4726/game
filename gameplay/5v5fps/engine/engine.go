@@ -14,6 +14,15 @@ type Player struct {
 	SecondaryWeapon *weapon.Weapon
 	KnifeWeapon *weapon.Weapon
 	EquippedWeapon *weapon.Weapon
+	Dead bool
+	Private bool
+	Kills int
+	Deaths int
+	Assists int
+}
+
+type State struct {
+	Scores map[util.Team]int
 }
 
 type Engine interface {
@@ -31,6 +40,22 @@ type Engine interface {
 	MoveDownLeft(userID uint64)
 	MoveDownRight(userID uint64)
 	Shoot(userID uint64, target player.Vector3)
-	All(userID uint64) []Player //returns all teamates and players in line of sight
+	All(userID uint64) []Player
 	PickupWeapon(userID uint64, weaponID int)
+	Channel() chan interface{}
+	State() State
+	DropWeapon(userID uint64)
+	SwitchPrimaryWeapon(userID uint64)
+	SwitchSecondaryWeapon(userID uint64)
+	SwitchKnifeWeapon(userID uint64)
+}
+
+type RoundEnd struct {
+	WinningTeam util.Team
+	LosingTeam util.Team	
+}
+
+type MatchEnd struct {
+	WinningTeam util.Team
+	LosingTeam util.Team
 }
