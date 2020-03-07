@@ -76,12 +76,12 @@ message GamePlayerData {
     uint64 user_id = 1;
     bool teammate = 2;
     bool known_pos = 3;
-    float pos_x = 4;
-    float pos_y = 5;
-    float pos_z = 6;
-    float orientation_x = 7;
-    float orientation_y = 8;
-    float orientation_z = 9;
+    double pos_x = 4;
+    double pos_y = 5;
+    double pos_z = 6;
+    double orientation_x = 7;
+    double orientation_y = 8;
+    double orientation_z = 9;
     bool dead = 10;
     bool connected = 11;
     int32 equipped_weapon = 12;
@@ -122,9 +122,9 @@ message GameMoveDownLeft {}
 message GameMoveDownRight {}
 
 message GameShoot {
-    float target_x = 1;
-    float target_y = 2;
-    float target_z = 3;
+    double target_x = 1;
+    double target_y = 2;
+    double target_z = 3;
 }
 
 message GameReload {}
@@ -140,7 +140,7 @@ message GameJump {}
 message GamePing {}
 
 message GameOrientation {
-    float x = 1;
-    float y = 2;
-    float z = 3;
+    double x = 1;
+    double y = 2;
+    double z = 3;
 }

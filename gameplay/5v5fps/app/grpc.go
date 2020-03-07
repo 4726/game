@@ -1,17 +1,21 @@
 package app
 
 import (
-	"github.com/4726/game/gameplay/player"
-	"github.com/4726/game/gameplay/weapon"
-	"github.com/4726/game/gameplay/engine"
-	"github.com/4726/game/gameplay/util"
+	"sync"
+	"time"
+
+	"github.com/4726/game/gameplay/5v5fps/engine"
+	"github.com/4726/game/gameplay/5v5fps/pb"
+	"github.com/4726/game/gameplay/5v5fps/player"
+	"github.com/4726/game/gameplay/5v5fps/util"
+	"github.com/4726/game/gameplay/5v5fps/weapon"
 )
 
 type gameServer struct {
-	players map[uint64]*player.Player
-	playersLock sync.Mutex
-	weapons []weapon.Weapon
-	en engine.Engine
+	players       map[uint64]*player.Player
+	playersLock   sync.Mutex
+	weapons       []weapon.Weapon
+	en            engine.Engine
 	playerStreams map[uint64]chan *pb.GameStateResponse
 }
 
@@ -21,7 +25,7 @@ func newGameServer(team1, team2 [5]uint64) *gameServer {
 	for _, v := range team1 {
 		p := &player.Player{
 			UserID: v,
-			Team: player.Team1,
+			Team:   util.Team1,
 		}
 		players[v] = p
 		ch := make(chan *pb.GameStateResponse)
@@ -30,24 +34,24 @@ func newGameServer(team1, team2 [5]uint64) *gameServer {
 	for _, v := range team2 {
 		p := &player.Player{
 			UserID: v,
-			Team: player.Team2,
+			Team:   util.Team2,
 		}
 		players[v] = p
 		ch := make(chan *pb.GameStateResponse)
 		playerStreams[v] = ch
 	}
 	return &gameServer{
-		players: players,
-		playerStreams: playerStreams
+		players:       players,
+		playerStreams: playerStreams,
 	}
 }
 
-func (s *gameServer) Connect(stream pb.GameConnectServer) error {
+func (s *gameServer) Connect(stream pb.Game_ConnectServer) error {
 	var userID uint64
 	errChannel := make(chan error)
 	for {
 		select {
-		case err := <- errChannel:
+		case err := <-errChannel:
 			return err
 		default:
 		}
@@ -56,17 +60,20 @@ func (s *gameServer) Connect(stream pb.GameConnectServer) error {
 			return err
 		}
 
-		data := in.Data()
-
-		if initReq := data.GetInit(); initReq != nil {
+		if initReq := in.GetInit(); initReq != nil {
 			s.playersLock.Lock()
-			p := s.players[in.GetUserId()]
+			p := s.players[initReq.GetUserId()]
 			p.Connected = true
 			userID = initReq.GetUserId()
-			
-			streamChannel := s.players[in.GetUserId()]
+
+			streamChannel := s.playerStreams[initReq.GetUserId()]
 			go func() {
 				for msg := range streamChannel {
+					out := &pb.GameServerData{
+						Data: &pb.GameServerData_State{
+							State: msg,
+						},
+					}
 					err := stream.Send(out)
 					if err != nil {
 						errChannel <- err
@@ -90,18 +97,16 @@ func (s *gameServer) Connect(stream pb.GameConnectServer) error {
 					initPosition = util.Vector3{0, 0, 0}
 				}
 				enginePlayer := engine.Player{
-					UserID: v.UserID,
-					Position: initPosition,
-					HP: 100,
-					Team: v.Team,
-					PrimaryWeapon: nil,
-					SecondaryWeapon: weapon.SecondaryOne,
-					KnifeWeapon: nil,
-					EquippedWeapon: weapon.SecondaryOne,
-					Dead: false,
-					Kills: 0,
-					Deaths: 0,
-					Assists: 0,
+					UserID:          v.UserID,
+					Position:        initPosition,
+					HP:              100,
+					Team:            v.Team,
+					PrimaryWeapon:   nil,
+					SecondaryWeapon: &weapon.SecondaryOne,
+					KnifeWeapon:     nil,
+					EquippedWeapon:  &weapon.SecondaryOne,
+					Dead:            false,
+					UserScore: engine.Score{0, 0, 0},
 				}
 				s.en.Init(enginePlayer)
 			}
@@ -111,12 +116,15 @@ func (s *gameServer) Connect(stream pb.GameConnectServer) error {
 			continue
 		}
 
-		if buyReq := data.GetBuy(); buyReq != nil {
-			s.en.Buy(userID, buyReq.GetWeaponId())
+		if buyReq := in.GetBuy(); buyReq != nil {
+			s.en.Buy(userID, int(buyReq.GetWeaponId()))
+
 			out := &pb.GameServerData{
-				Data: &pb.GameBuyResponse{
-					Success: true,
-				}
+				Data: &pb.GameServerData_Buy{
+					Buy: &pb.GameBuyResponse{
+						Success: true,
+					},
+				}, 
 			}
 			err := stream.Send(out)
 			if err != nil {
@@ -125,11 +133,9 @@ func (s *gameServer) Connect(stream pb.GameConnectServer) error {
 			continue
 		}
 
-
-		if inputReq := data.GetInput(); inputReq != nil {
+		if inputReq := in.GetInput(); inputReq != nil {
 			s.playersLock.Lock()
 			p := s.players[userID]
-			key := inputReq.GetInputKey()
 
 			if in := inputReq.GetPrimaryWeapon(); in != nil {
 				p.EquippedWeapon = p.PrimaryWeapon
@@ -138,31 +144,31 @@ func (s *gameServer) Connect(stream pb.GameConnectServer) error {
 			} else if in := inputReq.GetKnifeWeapon(); in != nil {
 				p.EquippedWeapon = p.KnifeWeapon
 			} else if in := inputReq.GetMoveLeft(); in != nil {
-				s.engine.MoveLeft(p.UserID)
+				s.en.MoveLeft(p.UserID)
 			} else if in := inputReq.GetMoveLeftUp(); in != nil {
-				s.engine.MoveLeftUp(p.UserID)
+				s.en.MoveLeftUp(p.UserID)
 			} else if in := inputReq.GetMoveLeftDown(); in != nil {
-				s.engine.MoveLeftDown(p.UserID)
+				s.en.MoveLeftDown(p.UserID)
 			} else if in := inputReq.GetMoveRight(); in != nil {
-				s.engine.MoveRight(p.UserID)
+				s.en.MoveRight(p.UserID)
 			} else if in := inputReq.GetMoveRightUp(); in != nil {
-				s.engine.MoveRightUp(p.UserID)
+				s.en.MoveRightUp(p.UserID)
 			} else if in := inputReq.GetMoveRightDown(); in != nil {
-				s.engine.MoveRightDown(p.UserID)
+				s.en.MoveRightDown(p.UserID)
 			} else if in := inputReq.GetMoveUp(); in != nil {
-				s.engine.MoveUp(p.UserID)
+				s.en.MoveUp(p.UserID)
 			} else if in := inputReq.GetMoveUpLeft(); in != nil {
-				s.engine.MoveUpLeft(p.UserID)
+				s.en.MoveUpLeft(p.UserID)
 			} else if in := inputReq.GetMoveUpRight(); in != nil {
-				s.engine.MoveUpRight(p.UserID)
+				s.en.MoveUpRight(p.UserID)
 			} else if in := inputReq.GetMoveDown(); in != nil {
-				s.engine.MoveDown(p.UserID)
+				s.en.MoveDown(p.UserID)
 			} else if in := inputReq.GetMoveDownLeft(); in != nil {
-				s.engine.MoveDownLeft(p.UserID)
+				s.en.MoveDownLeft(p.UserID)
 			} else if in := inputReq.GetMoveDownRight(); in != nil {
-				s.engine.MoveDownRight(p.UserID)
+				s.en.MoveDownRight(p.UserID)
 			} else if in := inputReq.GetShoot(); in != nil {
-				s.engine.Shoot(p.UserID, util.Vector3{
+				s.en.Shoot(p.UserID, util.Vector3{
 					in.GetTargetX(),
 					in.GetTargetY(),
 					in.GetTargetZ(),
@@ -170,7 +176,7 @@ func (s *gameServer) Connect(stream pb.GameConnectServer) error {
 			} else if in := inputReq.GetReload(); in != nil {
 				p.EquippedWeapon.Ammo = p.EquippedWeapon.AmmoMax
 			} else if in := inputReq.GetPickupWeapon(); in != nil {
-				s.engine.PickupWeapon(p.UserID, in.GetWeaponId())
+				s.en.PickupWeapon(p.UserID, int(in.GetWeaponId()))
 			} else if in := inputReq.GetCrouch(); in != nil {
 
 			} else if in := inputReq.GetJump(); in != nil {
@@ -178,13 +184,18 @@ func (s *gameServer) Connect(stream pb.GameConnectServer) error {
 			} else if in := inputReq.GetPing(); in != nil {
 
 			} else if in := inputReq.GetOrientation(); in != nil {
-				s.engine.SetOrientation(userID, in.GetOrientation)
+				s.en.SetOrientation(userID, util.Vector3{
+					X: in.GetX(),
+					Y: in.GetY(),
+					Z: in.GetZ(),
+				})
 			}
 
-			p.LastUpdate = time.now()
+			p.LastUpdate = time.Now()
 			s.playersLock.Unlock()
 			continue
 		}
+	}
 }
 
 func (s *gameServer) runGameLoop() {
@@ -203,27 +214,28 @@ func (s *gameServer) runGameLoop() {
 	}
 }
 
-func enginePlayersToPBPlayers(eps []engine.Player) *pb.GamePlayerData {
+func enginePlayersToPBPlayers(eps []engine.Player) []*pb.GamePlayerData {
 	var pbPlayers []*pb.GamePlayerData
 	for _, v := range eps {
 		pbPlayer := &pb.GamePlayerData{
-			UserId: v.UserID,
-			Teammate: true,
-			KnownPos: v.Private,
-			PosX: v.Position.X,
-			PosY: v.Position.Y,
-			PosZ: v.Position.Z,
-			OrientationX: v.Orientation.X,
-			OrientationY: v.Orientation.Y,
-			OrientationZ: v.Orientation.Z,
-			Dead: v.Dead,
-			Connected: true,
-			EquippedWeapon: v.EquippedWeapon.ID,
-			ScoreKills: v.UserScore.Kills,
-			ScoreDeaths: v.UserScore.Deaths,
-			ScoreAssists: v.UserScore.Assists,
-			Money: v.Money,
+			UserId:         v.UserID,
+			Teammate:       true,
+			KnownPos:       v.Private,
+			PosX:           v.Position.X,
+			PosY:           v.Position.Y,
+			PosZ:           v.Position.Z,
+			OrientationX:   v.Orientation.X,
+			OrientationY:   v.Orientation.Y,
+			OrientationZ:   v.Orientation.Z,
+			Dead:           v.Dead,
+			Connected:      true,
+			EquippedWeapon: int32(v.EquippedWeapon.ID),
+			ScoreKills:     int32(v.UserScore.Kills),
+			ScoreDeaths:    int32(v.UserScore.Deaths),
+			ScoreAssists:   int32(v.UserScore.Assists),
+			Money:          int32(v.Money),
 		}
+		pbPlayers = append(pbPlayers, pbPlayer)
 	}
 
 	return pbPlayers

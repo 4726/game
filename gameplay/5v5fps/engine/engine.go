@@ -1,24 +1,24 @@
 package engine
 
 import (
-	"github.com/4726/game/gameplay/player"
-	"github.com/4726/game/gameplay/util"
+	"github.com/4726/game/gameplay/5v5fps/util"
+	"github.com/4726/game/gameplay/5v5fps/weapon"
 )
 
 type Player struct {
-	UserID uint64
-	Position util.Vector3
-	HP int
-	Team util.Team
-	PrimaryWeapon *weapon.Weapon
+	UserID          uint64
+	Position        util.Vector3
+	HP              int
+	Team            util.TeamID
+	PrimaryWeapon   *weapon.Weapon
 	SecondaryWeapon *weapon.Weapon
-	KnifeWeapon *weapon.Weapon
-	EquippedWeapon *weapon.Weapon
-	Dead bool
-	Private bool
-	Money int
-	Orientation util.Vector3
-	UserScore Score
+	KnifeWeapon     *weapon.Weapon
+	EquippedWeapon  *weapon.Weapon
+	Dead            bool
+	Private         bool
+	Money           int
+	Orientation     util.Vector3
+	UserScore       Score
 }
 
 type Score struct {
@@ -26,7 +26,7 @@ type Score struct {
 }
 
 type State struct {
-	Scores map[util.Team]int
+	Scores map[util.TeamID]int
 }
 
 type Engine interface {
@@ -43,7 +43,7 @@ type Engine interface {
 	MoveDown(userID uint64)
 	MoveDownLeft(userID uint64)
 	MoveDownRight(userID uint64)
-	Shoot(userID uint64, target player.Vector3)
+	Shoot(userID uint64, target util.Vector3)
 	All(userID uint64) []Player
 	PickupWeapon(userID uint64, weaponID int)
 	Channel() chan interface{}
@@ -58,13 +58,13 @@ type Engine interface {
 }
 
 type RoundEnd struct {
-	WinningTeam util.Team
-	LosingTeam util.Team	
+	WinningTeam util.TeamID
+	LosingTeam  util.TeamID
 }
 
 type MatchEnd struct {
-	WinningTeam util.Team
-	LosingTeam util.Team
+	WinningTeam util.TeamID
+	LosingTeam  util.TeamID
 }
 
 type RoundStart struct {

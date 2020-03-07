@@ -1,6 +1,6 @@
 package util
 
-type Vectot3 struct {
+type Vector3 struct {
 	X, Y, Z float64
 }
 
