@@ -16,9 +16,13 @@ type Player struct {
 	EquippedWeapon *weapon.Weapon
 	Dead bool
 	Private bool
-	Kills int
-	Deaths int
-	Assists int
+	Money int
+	Orientation util.Vector3
+	UserScore Score
+}
+
+type Score struct {
+	Kills, Deaths, Assists int
 }
 
 type State struct {
@@ -48,6 +52,9 @@ type Engine interface {
 	SwitchPrimaryWeapon(userID uint64)
 	SwitchSecondaryWeapon(userID uint64)
 	SwitchKnifeWeapon(userID uint64)
+	Start()
+	Buy(userID uint64, weaponID int)
+	SetOrientation(userID uint64, orientation util.Vector3)
 }
 
 type RoundEnd struct {
@@ -58,4 +65,10 @@ type RoundEnd struct {
 type MatchEnd struct {
 	WinningTeam util.Team
 	LosingTeam util.Team
+}
+
+type RoundStart struct {
+}
+
+type MatchStart struct {
 }

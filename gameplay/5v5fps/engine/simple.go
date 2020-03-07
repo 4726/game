@@ -3,7 +3,7 @@ package engine
 // SimpleEngine implements Engine
 type SimpleEngine struct {
 	players map[uint64]*Player
-	playersLock sync.Mutex
+	sync.Mutex
 	droppedWeapons []SimpleWeapon
 	weapons []weapon.Weapon
 	ch chan interface{}
@@ -15,16 +15,26 @@ type SimpleWeapon struct {
 	WeaponID int
 }
 
+func NewSimpleEngine() *SimpleEngine {
+	return &SimpleEngine{
+		players: map[uint64]*Player{},
+		ch: make(chan interface{}),
+		state: State{
+			Scores: map[util.Team]int{}, 
+		},
+	}
+}
+
 func (e *SimpleEngine) Init(p Player) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	e.players[p.UserID] = &p
 }
 
 func (e *SimpleEngine) MoveLeft(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[p.UserID]
 	if !ok {
@@ -35,8 +45,8 @@ func (e *SimpleEngine) MoveLeft(userID uint64) {
 }
 
 func (e *SimpleEngine) MoveLeftUp(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[p.UserID]
 	if !ok {
@@ -47,8 +57,8 @@ func (e *SimpleEngine) MoveLeftUp(userID uint64) {
 }
 
 func (e *SimpleEngine) MoveLeftDown(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[p.UserID]
 	if !ok {
@@ -59,8 +69,8 @@ func (e *SimpleEngine) MoveLeftDown(userID uint64) {
 }
 
 func (e *SimpleEngine) MoveRight(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[p.UserID]
 	if !ok {
@@ -71,8 +81,8 @@ func (e *SimpleEngine) MoveRight(userID uint64) {
 }
 
 func (e *SimpleEngine) MoveRightUp(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[p.UserID]
 	if !ok {
@@ -83,8 +93,8 @@ func (e *SimpleEngine) MoveRightUp(userID uint64) {
 }
 
 func (e *SimpleEngine) MoveRightDown(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[p.UserID]
 	if !ok {
@@ -95,8 +105,8 @@ func (e *SimpleEngine) MoveRightDown(userID uint64) {
 }
 
 func (e *SimpleEngine) MoveUp(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[p.UserID]
 	if !ok {
@@ -107,8 +117,8 @@ func (e *SimpleEngine) MoveUp(userID uint64) {
 }
 
 func (e *SimpleEngine) MoveUpLeft(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[p.UserID]
 	if !ok {
@@ -119,8 +129,8 @@ func (e *SimpleEngine) MoveUpLeft(userID uint64) {
 }
 
 func (e *SimpleEngine) MoveUpRight(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[p.UserID]
 	if !ok {
@@ -131,8 +141,8 @@ func (e *SimpleEngine) MoveUpRight(userID uint64) {
 }
 
 func (e *SimpleEngine) MoveDown(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[p.UserID]
 	if !ok {
@@ -143,8 +153,8 @@ func (e *SimpleEngine) MoveDown(userID uint64) {
 }
 
 func (e *SimpleEngine) MoveDownLeft(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[p.UserID]
 	if !ok {
@@ -155,8 +165,8 @@ func (e *SimpleEngine) MoveDownLeft(userID uint64) {
 }
 
 func (e *SimpleEngine) MoveDownRight(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[p.UserID]
 	if !ok {
@@ -167,8 +177,8 @@ func (e *SimpleEngine) MoveDownRight(userID uint64) {
 }
 
 func (e *SimpleEngine) Shoot(userID uint64, target player.Vector3) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 	
 	p, ok := e.players[userID]
 	if !ok {
@@ -189,6 +199,7 @@ func (e *SimpleEngine) Shoot(userID uint64, target player.Vector3) {
 		if v.HP <= 0 {
 			v.Dead = true
 			haveDeath = true
+			p.UserScore.Kills++
 		}
 	}
 
@@ -231,6 +242,8 @@ func (e *SimpleEngine) Shoot(userID uint64, target player.Vector3) {
 					WinningTeam: winner,
 					LosingTeam: loser,
 				}
+			} else {
+				e.ch <- RoundStart{}
 			}
 			break
 		}
@@ -238,8 +251,8 @@ func (e *SimpleEngine) Shoot(userID uint64, target player.Vector3) {
 }
 
 func (e *SimpleEngine) All(userID uint64) []Player {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	var players []Player
 	p, ok := e.players
@@ -250,7 +263,12 @@ func (e *SimpleEngine) All(userID uint64) []Player {
 		playerData := *v
 
 		//doesn't return information that should be private
-		if v.Team != p.Team {
+		if e.inLineOfSight(p, v) && v.Team != p.Team {
+			playerData.Private = false
+			playerData.Position = v.Position
+			playerData.EquippedWeapon = v.EquippedWeapon
+			playerData.Orientation = util.Vector3{}
+		} else if v.Team != p.Team {
 			playerData.Private = true
 			playerData.Position = util.Vector3{}
 			playerData.HP = 0
@@ -258,13 +276,9 @@ func (e *SimpleEngine) All(userID uint64) []Player {
 			playerData.SecondaryWeapon = nil
 			playerData.KnifeWeapon = nil
 			playerData.EquippedWeapon = nil
-		}
-
-		if e.inLineOfSight(p, v) {
-			playerData.Private = false
-			playerData.Position = v.Position
-			playerData.EquippedWeapon = v.EquippedWeapon
-		}
+			playerData.Money = nil
+			playerData.Orientation = util.Vector3{}
+		} 
 
 		players = append(players, playerData)
 	}
@@ -273,8 +287,8 @@ func (e *SimpleEngine) All(userID uint64) []Player {
 }
 
 func (e *SimpleEngine) PickupWeapon(userID uint64, weaponID int) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[userID]
 	if !ok {
@@ -311,8 +325,8 @@ func (e *SimpleEngine) State() State {
 }
 
 func (e *SimpleEngine) DropWeapon(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[userID]
 	if !ok {
@@ -334,8 +348,8 @@ func (e *SimpleEngine) DropWeapon(userID uint64) {
 }
 
 func (e *SimpleEngine) SwitchPrimaryWeapon(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[userID]
 	if !ok {
@@ -345,8 +359,8 @@ func (e *SimpleEngine) SwitchPrimaryWeapon(userID uint64) {
 }
 
 func (e *SimpleEngine) SwitchSecondaryWeapon(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[userID]
 	if !ok {
@@ -356,8 +370,8 @@ func (e *SimpleEngine) SwitchSecondaryWeapon(userID uint64) {
 }
 
 func (e *SimpleEngine) SwitchKnifeWeapon(userID uint64) {
-	e.playersLock.Lock()
-	defer e.playersLock.Unlock()
+	e.Lock()
+	defer e.Unlock()
 
 	p, ok := e.players[userID]
 	if !ok {
@@ -365,6 +379,62 @@ func (e *SimpleEngine) SwitchKnifeWeapon(userID uint64) {
 	}
 	p.EquippedWeapon = p.KnifeWeapon
 }
+
+func (e *SimpleEngine) Start() {
+	e.Lock()
+	defer e.Unlock()
+
+	e.ch <- MatchStart{}
+	e.ch <- RoundStart{}
+}
+
+func (e *SimpleEngine) Buy(userID uint64, weaponID int) {
+	e.Lock()
+	defer e.Unlock()
+
+	p, ok := e.players[userID]
+	if !ok {
+		return
+	}
+
+	var weapon weapon.Weapon
+	for _, v := range s.weapons {
+		if v.ID == buyReq,GetWeaponId() {
+			weapon = v
+			break
+		}
+	}
+	if weapon.ID == 0 {
+		return
+	}
+
+	if p.Money < weapon.Price {
+		return
+	} else {
+		p.Money -= weapon.Price
+		switch weapon.WT {
+		case weapon.Primary:
+			p.PrimaryWeapon = weapon
+		case weapon.Secondary:
+			p.SecondaryWeapon = weapon
+		case weapon.Knife:
+			p.KnifeWeapon = weapon
+		}
+	}
+}
+
+func SetOrientation(userID uint64, orientation util.Vector3) {
+	e.Lock()
+	defer e.Unlock()
+
+	p, ok := e.players[userID]
+	if !ok {
+		return
+	}
+
+	p.Orientation = orientation 
+}
+
 
 func (e *SimpleEngine) inLineOfSight(player, other Player) bool {
 	return true

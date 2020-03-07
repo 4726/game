@@ -18,6 +18,10 @@ const (
 	Knife WeaponType = 2
 )
 
+var (
+	SecondaryOne = Weapon{1, "secondary_one", 30, 200, Secondary, 20, 20}
+)
+
 // WeaponsFromFile reads a json file and returns a slice of Weapon
 func WeaponsFromFile(path string) ([]Weapon, error) {
 	var weapons []Weapon
