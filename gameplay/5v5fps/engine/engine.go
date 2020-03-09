@@ -46,7 +46,7 @@ type Engine interface {
 	Shoot(userID uint64, target util.Vector3)
 	All(userID uint64) []Player
 	PickupWeapon(userID uint64, weaponID int)
-	Channel() chan interface{}
+	Channel() <-chan interface{}
 	State() State
 	DropWeapon(userID uint64)
 	SwitchPrimaryWeapon(userID uint64)
@@ -55,6 +55,7 @@ type Engine interface {
 	Start()
 	Buy(userID uint64, weaponID int)
 	SetOrientation(userID uint64, orientation util.Vector3)
+	Reload(userID uin64)
 }
 
 type RoundEnd struct {

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"sync"
+
 	"github.com/4726/game/gameplay/5v5fps/util"
 	"github.com/4726/game/gameplay/5v5fps/weapon"
 )
@@ -11,9 +12,9 @@ type SimpleEngine struct {
 	players map[uint64]*Player
 	sync.Mutex
 	droppedWeapons []SimpleWeapon
-	weapons []weapon.Weapon
-	ch chan interface{}
-	state State
+	weapons        []weapon.Weapon
+	ch             chan interface{}
+	state          State
 }
 
 type SimpleWeapon struct {
@@ -24,9 +25,9 @@ type SimpleWeapon struct {
 func NewSimpleEngine() *SimpleEngine {
 	return &SimpleEngine{
 		players: map[uint64]*Player{},
-		ch: make(chan interface{}),
+		ch:      make(chan interface{}),
 		state: State{
-			Scores: map[util.TeamID]int{}, 
+			Scores: map[util.TeamID]int{},
 		},
 	}
 }
@@ -185,11 +186,17 @@ func (e *SimpleEngine) MoveDownRight(userID uint64) {
 func (e *SimpleEngine) Shoot(userID uint64, target util.Vector3) {
 	e.Lock()
 	defer e.Unlock()
-	
+
 	p, ok := e.players[userID]
 	if !ok {
 		return
 	}
+
+	if p.EquippedWeapon.Ammo = 0 {
+		return
+	}
+
+	p.EquippedWeapon.Ammo--
 
 	var haveDeath bool
 	for _, v := range e.players {
@@ -237,7 +244,7 @@ func (e *SimpleEngine) Shoot(userID uint64, target util.Vector3) {
 			}
 			e.ch <- RoundEnd{
 				WinningTeam: winner,
-				LosingTeam: loser,
+				LosingTeam:  loser,
 			}
 
 			score := e.state.Scores[winner]
@@ -246,7 +253,7 @@ func (e *SimpleEngine) Shoot(userID uint64, target util.Vector3) {
 			if e.state.Scores[winner] == 16 {
 				e.ch <- MatchEnd{
 					WinningTeam: winner,
-					LosingTeam: loser,
+					LosingTeam:  loser,
 				}
 			} else {
 				e.ch <- RoundStart{}
@@ -284,7 +291,7 @@ func (e *SimpleEngine) All(userID uint64) []Player {
 			playerData.EquippedWeapon = nil
 			playerData.Money = 0
 			playerData.Orientation = util.Vector3{}
-		} 
+		}
 
 		players = append(players, playerData)
 	}
@@ -304,7 +311,7 @@ func (e *SimpleEngine) PickupWeapon(userID uint64, weaponID int) {
 		if v.WeaponID != weaponID {
 			return
 		}
-		
+
 		if v.Location == p.Position {
 			for _, w := range e.weapons {
 				if w.ID == weaponID {
@@ -339,7 +346,7 @@ func (e *SimpleEngine) DropWeapon(userID uint64) {
 		return
 	}
 	if p.EquippedWeapon == nil {
-		return 
+		return
 	}
 
 	e.droppedWeapons = append(e.droppedWeapons, SimpleWeapon{p.Position, p.EquippedWeapon.ID})
@@ -438,9 +445,20 @@ func (e *SimpleEngine) SetOrientation(userID uint64, orientation util.Vector3) {
 		return
 	}
 
-	p.Orientation = orientation 
+	p.Orientation = orientation
 }
 
+func (e *SimpleEngine) Reload(userID uint64) {
+	e.Lock()
+	defer e.Unlock()
+
+	p, ok := e.players[userID]
+	if !ok {
+		return
+	}
+
+	p.EquippedWeapon.Ammo = p.EquippedWeapon.AmmoMax
+}
 
 func (e *SimpleEngine) inLineOfSight(player, other Player) bool {
 	return true
