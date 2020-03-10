@@ -19,7 +19,7 @@ type SimpleEngine struct {
 
 type SimpleWeapon struct {
 	Location util.Vector3
-	WeaponID int
+	Weapon   *weapon.Weapon
 }
 
 func NewSimpleEngine() *SimpleEngine {
@@ -29,6 +29,7 @@ func NewSimpleEngine() *SimpleEngine {
 		state: State{
 			Scores: map[util.TeamID]int{},
 		},
+		weapons: []weapon.Weapon{weapon.SecondaryOne, weapon.PrimaryOne, weapon.KnifeOne},
 	}
 }
 
@@ -192,7 +193,7 @@ func (e *SimpleEngine) Shoot(userID uint64, target util.Vector3) {
 		return
 	}
 
-	if p.EquippedWeapon.Ammo = 0 {
+	if p.EquippedWeapon.Ammo == 0 || p.EquippedWeapon.WT == weapon.Knife {
 		return
 	}
 
@@ -213,6 +214,7 @@ func (e *SimpleEngine) Shoot(userID uint64, target util.Vector3) {
 			v.Dead = true
 			haveDeath = true
 			p.UserScore.Kills++
+			v.UserScore.Deaths++
 		}
 	}
 
@@ -308,22 +310,27 @@ func (e *SimpleEngine) PickupWeapon(userID uint64, weaponID int) {
 		return
 	}
 	for _, v := range e.droppedWeapons {
-		if v.WeaponID != weaponID {
+		if v.Weapon.ID != weaponID {
 			return
 		}
 
 		if v.Location == p.Position {
-			for _, w := range e.weapons {
-				if w.ID == weaponID {
-					switch w.WT {
-					case weapon.Primary:
-						p.PrimaryWeapon = &w
-					case weapon.Secondary:
-						p.SecondaryWeapon = &w
-					case weapon.Knife:
-						p.KnifeWeapon = &w
-					}
+			switch v.Weapon.WT {
+			case weapon.Primary:
+				if p.PrimaryWeapon != nil {
+					e.droppedWeapons = append(e.droppedWeapons, SimpleWeapon{p.Position, p.PrimaryWeapon})
 				}
+				p.PrimaryWeapon = v.Weapon
+			case weapon.Secondary:
+				if p.SecondaryWeapon != nil {
+					e.droppedWeapons = append(e.droppedWeapons, SimpleWeapon{p.Position, p.SecondaryWeapon})
+				}
+				p.SecondaryWeapon = v.Weapon
+			case weapon.Knife:
+				if p.SecondaryWeapon != nil {
+					e.droppedWeapons = append(e.droppedWeapons, SimpleWeapon{p.Position, p.KnifeWeapon})
+				}
+				p.KnifeWeapon = v.Weapon
 			}
 		}
 	}
@@ -349,7 +356,7 @@ func (e *SimpleEngine) DropWeapon(userID uint64) {
 		return
 	}
 
-	e.droppedWeapons = append(e.droppedWeapons, SimpleWeapon{p.Position, p.EquippedWeapon.ID})
+	e.droppedWeapons = append(e.droppedWeapons, SimpleWeapon{p.Position, p.EquippedWeapon})
 	if p.EquippedWeapon == p.PrimaryWeapon {
 		p.PrimaryWeapon = nil
 	} else if p.EquippedWeapon == p.SecondaryWeapon {

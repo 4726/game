@@ -55,7 +55,7 @@ type Engine interface {
 	Start()
 	Buy(userID uint64, weaponID int)
 	SetOrientation(userID uint64, orientation util.Vector3)
-	Reload(userID uin64)
+	Reload(userID uint64)
 }
 
 type RoundEnd struct {

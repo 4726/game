@@ -25,6 +25,8 @@ const (
 
 var (
 	SecondaryOne = Weapon{1, "secondary_one", 30, 200, Secondary, 20, 20}
+	PrimaryOne = Weapon{2, "primary_one", 50, 1000, Primary, 30, 30}
+	KnifeOne = Weapon{3, "knife_one", 40, 300, Knife, 0, 0}
 )
 
 // WeaponsFromFile reads a json file and returns a slice of Weapon
