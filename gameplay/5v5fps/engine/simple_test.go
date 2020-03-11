@@ -406,11 +406,65 @@ func TestShootHit(t *testing.T) {
 }
 
 func TestShootTeamKill(t *testing.T) {
+	e := NewSimpleEngine()
+	ch := e.Channel()
+	go func() {
+		for range ch {
+		}
+	}()
 
+	players := fillTestData(e)
+	e.Start()
+	e.MoveLeft(2)
+
+	for i := 0; i < 4; i++ {
+		e.Shoot(1, util.Vector3{-1, 0, 0})
+	}
+
+	updatedP1 := players[0]
+	updatedP1.EquippedWeapon.Ammo -= 4
+	updatedP1.UserScore.Kills--
+	updatedP2 := players[1]
+	updatedP2.Position = util.Vector3{-1, 0, 0}
+	updatedP2.HP = updatedP2.HP - int(updatedP1.EquippedWeapon.Damage*4)
+	updatedP2.Dead = true
+	updatedP2.UserScore.Deaths++
+	players[0] = updatedP1
+	players[1] = updatedP2
+
+	actualPlayers := getPlayers(e)
+	assert.ElementsMatch(t, players, actualPlayers)
 }
 
 func TestShootKill(t *testing.T) {
+	e := NewSimpleEngine()
+	ch := e.Channel()
+	go func() {
+		for range ch {
+		}
+	}()
 
+	players := fillTestData(e)
+	e.Start()
+	e.MoveLeft(6)
+
+	for i := 0; i < 4; i++ {
+		e.Shoot(1, util.Vector3{-1, 0, 0})
+	}
+
+	updatedP1 := players[0]
+	updatedP1.EquippedWeapon.Ammo -= 4
+	updatedP1.UserScore.Kills++
+	updatedP6 := players[5]
+	updatedP6.Position = util.Vector3{-1, 0, 0}
+	updatedP6.HP -= int(updatedP1.EquippedWeapon.Damage * 4)
+	updatedP6.Dead = true
+	updatedP6.UserScore.Deaths++
+	players[0] = updatedP1
+	players[5] = updatedP6
+
+	actualPlayers := getPlayers(e)
+	assert.ElementsMatch(t, players, actualPlayers)
 }
 
 func TestAll(t *testing.T) {
@@ -493,25 +547,24 @@ func TestPickupWeapon(t *testing.T) {
 	assert.ElementsMatch(t, players, actualPlayers)
 }
 
-// func TestChannel(t *testing.T) {
-// 	e := NewSimpleEngine()
-// 	ch := e.Channel()
-// 	go func() {
-// 		for range ch{}
-// 	}()
+func TestState(t *testing.T) {
+	e := NewSimpleEngine()
+	ch := e.Channel()
+	go func() {
+		for range ch {
+		}
+	}()
 
-// 	players := fillTestData(e)
-// }
-
-// func TestState(t *testing.T) {
-// 	e := NewSimpleEngine()
-// 	ch := e.Channel()
-// 	go func() {
-// 		for range ch{}
-// 	}()
-
-// 	players := fillTestData(e)
-// }
+	fillTestData(e)
+	state := e.State()
+	expectedState := State{
+		Scores: map[util.TeamID]int{
+			util.Team1: 0,
+			util.Team2: 0,
+		},
+	}
+	assert.Equal(t, expectedState, state)
+}
 
 func TestDropWeaponNone(t *testing.T) {
 	e := NewSimpleEngine()

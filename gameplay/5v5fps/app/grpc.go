@@ -6,43 +6,40 @@ import (
 
 	"github.com/4726/game/gameplay/5v5fps/engine"
 	"github.com/4726/game/gameplay/5v5fps/pb"
-	"github.com/4726/game/gameplay/5v5fps/player"
 	"github.com/4726/game/gameplay/5v5fps/util"
 	"github.com/4726/game/gameplay/5v5fps/weapon"
 )
 
 type gameServer struct {
-	players       map[uint64]*player.Player
+	players       map[uint64]*player
 	playersLock   sync.Mutex
 	weapons       []weapon.Weapon
 	en            engine.Engine
 	playerStreams map[uint64]chan *pb.GameStateResponse
 }
 
+type player struct {
+	Connected bool
+	Team      util.TeamID
+}
+
 func newGameServer(team1, team2 [5]uint64) *gameServer {
-	players := map[uint64]*player.Player{}
+	players := map[uint64]*player{}
 	playerStreams := map[uint64]chan *pb.GameStateResponse{}
 	for _, v := range team1 {
-		p := &player.Player{
-			UserID: v,
-			Team:   util.Team1,
-		}
-		players[v] = p
+		players[v] = &player{false, util.Team1}
 		ch := make(chan *pb.GameStateResponse)
 		playerStreams[v] = ch
 	}
 	for _, v := range team2 {
-		p := &player.Player{
-			UserID: v,
-			Team:   util.Team2,
-		}
-		players[v] = p
+		players[v] = &player{false, util.Team2}
 		ch := make(chan *pb.GameStateResponse)
 		playerStreams[v] = ch
 	}
 	return &gameServer{
 		players:       players,
 		playerStreams: playerStreams,
+		en: engine.NewSimpleEngine(),
 	}
 }
 
@@ -62,8 +59,7 @@ func (s *gameServer) Connect(stream pb.Game_ConnectServer) error {
 
 		if initReq := in.GetInit(); initReq != nil {
 			s.playersLock.Lock()
-			p := s.players[initReq.GetUserId()]
-			p.Connected = true
+			s.players[initReq.GetUserId()].Connected = true
 			userID = initReq.GetUserId()
 
 			streamChannel := s.playerStreams[initReq.GetUserId()]
@@ -82,14 +78,19 @@ func (s *gameServer) Connect(stream pb.Game_ConnectServer) error {
 				}
 			}()
 
+			allConnected := true
 			for _, v := range s.players {
 				if !v.Connected {
-					s.playersLock.Unlock()
-					continue
+					allConnected = false
 				}
 			}
 
-			for _, v := range s.players {
+			if !allConnected {
+				s.playersLock.Unlock()
+				continue
+			}
+
+			for k, v := range s.players {
 				var initPosition util.Vector3
 				if v.Team == util.Team1 {
 					initPosition = util.Vector3{500, 0, 0}
@@ -97,7 +98,7 @@ func (s *gameServer) Connect(stream pb.Game_ConnectServer) error {
 					initPosition = util.Vector3{0, 0, 0}
 				}
 				enginePlayer := engine.Player{
-					UserID:          v.UserID,
+					UserID:          k,
 					Position:        initPosition,
 					HP:              100,
 					Team:            v.Team,
@@ -106,7 +107,7 @@ func (s *gameServer) Connect(stream pb.Game_ConnectServer) error {
 					KnifeWeapon:     nil,
 					EquippedWeapon:  &weapon.SecondaryOne,
 					Dead:            false,
-					UserScore: engine.Score{0, 0, 0},
+					UserScore:       engine.Score{0, 0, 0},
 				}
 				s.en.Init(enginePlayer)
 			}
@@ -124,7 +125,7 @@ func (s *gameServer) Connect(stream pb.Game_ConnectServer) error {
 					Buy: &pb.GameBuyResponse{
 						Success: true,
 					},
-				}, 
+				},
 			}
 			err := stream.Send(out)
 			if err != nil {
@@ -134,49 +135,46 @@ func (s *gameServer) Connect(stream pb.Game_ConnectServer) error {
 		}
 
 		if inputReq := in.GetInput(); inputReq != nil {
-			s.playersLock.Lock()
-			p := s.players[userID]
-
 			if in := inputReq.GetPrimaryWeapon(); in != nil {
-				p.EquippedWeapon = p.PrimaryWeapon
+				s.en.SwitchPrimaryWeapon(userID)
 			} else if in := inputReq.GetSecondaryWeapon(); in != nil {
-				p.EquippedWeapon = p.SecondaryWeapon
+				s.en.SwitchSecondaryWeapon(userID)
 			} else if in := inputReq.GetKnifeWeapon(); in != nil {
-				p.EquippedWeapon = p.KnifeWeapon
+				s.en.SwitchKnifeWeapon(userID)
 			} else if in := inputReq.GetMoveLeft(); in != nil {
-				s.en.MoveLeft(p.UserID)
+				s.en.MoveLeft(userID)
 			} else if in := inputReq.GetMoveLeftUp(); in != nil {
-				s.en.MoveLeftUp(p.UserID)
+				s.en.MoveLeftUp(userID)
 			} else if in := inputReq.GetMoveLeftDown(); in != nil {
-				s.en.MoveLeftDown(p.UserID)
+				s.en.MoveLeftDown(userID)
 			} else if in := inputReq.GetMoveRight(); in != nil {
-				s.en.MoveRight(p.UserID)
+				s.en.MoveRight(userID)
 			} else if in := inputReq.GetMoveRightUp(); in != nil {
-				s.en.MoveRightUp(p.UserID)
+				s.en.MoveRightUp(userID)
 			} else if in := inputReq.GetMoveRightDown(); in != nil {
-				s.en.MoveRightDown(p.UserID)
+				s.en.MoveRightDown(userID)
 			} else if in := inputReq.GetMoveUp(); in != nil {
-				s.en.MoveUp(p.UserID)
+				s.en.MoveUp(userID)
 			} else if in := inputReq.GetMoveUpLeft(); in != nil {
-				s.en.MoveUpLeft(p.UserID)
+				s.en.MoveUpLeft(userID)
 			} else if in := inputReq.GetMoveUpRight(); in != nil {
-				s.en.MoveUpRight(p.UserID)
+				s.en.MoveUpRight(userID)
 			} else if in := inputReq.GetMoveDown(); in != nil {
-				s.en.MoveDown(p.UserID)
+				s.en.MoveDown(userID)
 			} else if in := inputReq.GetMoveDownLeft(); in != nil {
-				s.en.MoveDownLeft(p.UserID)
+				s.en.MoveDownLeft(userID)
 			} else if in := inputReq.GetMoveDownRight(); in != nil {
-				s.en.MoveDownRight(p.UserID)
+				s.en.MoveDownRight(userID)
 			} else if in := inputReq.GetShoot(); in != nil {
-				s.en.Shoot(p.UserID, util.Vector3{
+				s.en.Shoot(userID, util.Vector3{
 					in.GetTargetX(),
 					in.GetTargetY(),
 					in.GetTargetZ(),
 				})
 			} else if in := inputReq.GetReload(); in != nil {
-				p.EquippedWeapon.Ammo = p.EquippedWeapon.AmmoMax
+				s.en.Reload(userID)
 			} else if in := inputReq.GetPickupWeapon(); in != nil {
-				s.en.PickupWeapon(p.UserID, int(in.GetWeaponId()))
+				s.en.PickupWeapon(userID, int(in.GetWeaponId()))
 			} else if in := inputReq.GetCrouch(); in != nil {
 
 			} else if in := inputReq.GetJump(); in != nil {
@@ -191,8 +189,6 @@ func (s *gameServer) Connect(stream pb.Game_ConnectServer) error {
 				})
 			}
 
-			p.LastUpdate = time.Now()
-			s.playersLock.Unlock()
 			continue
 		}
 	}

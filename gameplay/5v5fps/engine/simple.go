@@ -27,7 +27,10 @@ func NewSimpleEngine() *SimpleEngine {
 		players: map[uint64]*Player{},
 		ch:      make(chan interface{}),
 		state: State{
-			Scores: map[util.TeamID]int{},
+			Scores: map[util.TeamID]int{
+				util.Team1: 0,
+				util.Team2: 0,
+			},
 		},
 		weapons: []weapon.Weapon{weapon.SecondaryOne, weapon.PrimaryOne, weapon.KnifeOne},
 	}
@@ -213,7 +216,11 @@ func (e *SimpleEngine) Shoot(userID uint64, target util.Vector3) {
 		if v.HP <= 0 {
 			v.Dead = true
 			haveDeath = true
-			p.UserScore.Kills++
+			if v.Team == p.Team {
+				p.UserScore.Kills--
+			} else {
+				p.UserScore.Kills++
+			}
 			v.UserScore.Deaths++
 		}
 	}
