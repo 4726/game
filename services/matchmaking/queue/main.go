@@ -36,7 +36,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	service := app.NewService(cfg)
+	service, err := app.NewService(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer service.Close()
 
 	c := make(chan os.Signal, 1)
